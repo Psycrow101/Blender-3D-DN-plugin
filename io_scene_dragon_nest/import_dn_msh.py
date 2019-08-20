@@ -49,7 +49,7 @@ def import_skn(context, file, directory):
 
     # todo: check version
     if 'Eternity Engine Skin File' not in skn_type:
-        context.window_manager.popup_menu(invalid_skn_type, title='Warning', icon='WARNING')
+        context.window_manager.popup_menu(invalid_skn_type, title='Warning', icon='ERROR')
         return None
 
     skn_data = {
@@ -178,7 +178,7 @@ def import_msh(context, file, skn_data, msh_size, append_armature):
                 has_missing_bones = True
 
             if has_missing_bones:
-                context.window_manager.popup_menu(missing_append_bones, title="Warning", icon='WARNING')
+                context.window_manager.popup_menu(missing_append_bones, title="Warning", icon='ERROR')
 
 
     else:
@@ -343,7 +343,7 @@ def load(context, filepath, *, append_to_target, global_matrix=None):
             skn = import_skn(context, fw, directory)
 
     if not skn:
-        context.window_manager.popup_menu(missing_skn, title="Warning", icon='WARNING')
+        context.window_manager.popup_menu(missing_skn, title="Warning", icon='ERROR')
 
     msh_size = os.path.getsize(filepath)
     with open(filepath, 'rb') as fw:
