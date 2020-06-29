@@ -137,7 +137,7 @@ def import_msh(context, file, skn_data, msh_size, append_armature):
         return None
 
     msh_version = read_int(file)
-    if msh_version != 13:
+    if msh_version not in (12, 13):
         context.window_manager.popup_menu(invalid_msh_version, title="Error", icon='ERROR')
         return None
 
