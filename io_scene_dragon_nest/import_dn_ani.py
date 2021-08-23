@@ -3,6 +3,8 @@ import mathutils
 import os
 from . binary_reader import *
 
+ANIM_ID_ALL = -1
+
 
 def trans_matrix(v):
     return mathutils.Matrix.Translation(v)
@@ -60,7 +62,7 @@ def get_anim_names(file):
 
 def import_anim(context, file, arm_obj, anim_id, bones_num, anims_num):
     arm = arm_obj.data
-    action = bpy.data.actions.new("dn_animation")
+    actions = {}
 
     end_pos = None
 
@@ -78,7 +80,7 @@ def import_anim(context, file, arm_obj, anim_id, bones_num, anims_num):
 
     for b in range(bones_num):
         if end_pos and end_pos == file.tell():
-            return action
+            return actions
 
         bpy.ops.object.mode_set(mode='EDIT')
 
@@ -92,9 +94,10 @@ def import_anim(context, file, arm_obj, anim_id, bones_num, anims_num):
         arm_bone = arm.edit_bones.get(bone_name)
         if not arm_bone:
             context.window_manager.popup_menu(invalid_armature, title='Error', icon='ERROR')
-            data.actions.remove(action)
-            ops.object.mode_set(mode='OBJECT')
-            return None
+            for act in actions.values():
+                bpy.data.actions.remove(act)
+            bpy.ops.object.mode_set(mode='OBJECT')
+            return {}
 
         arm_bone_parent = arm.edit_bones.get(bone_parent_name)
         if arm_bone_parent:
@@ -106,7 +109,12 @@ def import_anim(context, file, arm_obj, anim_id, bones_num, anims_num):
         bpy.ops.object.mode_set(mode='POSE')
 
         for k in range(anims_num):
-            if k == anim_id:
+            if anim_id in (ANIM_ID_ALL, k):
+                act = actions.get(k)
+                if not act:
+                    act = bpy.data.actions.new("dn_animation %d" % k)
+                    actions[k] = act
+
                 bone = arm_obj.pose.bones[bone_name]
 
                 base_loc = read_float(file, 3)
@@ -117,11 +125,11 @@ def import_anim(context, file, arm_obj, anim_id, bones_num, anims_num):
                 base_mat = trans_matrix(base_loc) @ base_rot_quaternion.to_matrix().to_4x4() @ scale_matrix(base_scale)
                 set_posebone_matrix(bone, base_mat)
 
-                group = action.groups.new(name=bone_name)
-                bone_string = "pose.bones[\"{}\"].".format(bone_name)
+                group = act.groups.new(name=bone_name)
+                bone_string = f'pose.bones["{bone_name}"].'
 
                 # location
-                curves = [action.fcurves.new(data_path=bone_string + "location", index=i) for i in (0, 1, 2)]
+                curves = [act.fcurves.new(data_path=bone_string + "location", index=i) for i in (0, 1, 2)]
                 for c in curves:
                     c.group = group
 
@@ -139,7 +147,7 @@ def import_anim(context, file, arm_obj, anim_id, bones_num, anims_num):
                     set_keyframe(curves, 0, bone.location)
 
                 # roation
-                curves = [action.fcurves.new(data_path=bone_string + "rotation_quaternion", index=i) for i in range(4)]
+                curves = [act.fcurves.new(data_path=bone_string + "rotation_quaternion", index=i) for i in range(4)]
                 for c in curves:
                     c.group = group
 
@@ -159,7 +167,7 @@ def import_anim(context, file, arm_obj, anim_id, bones_num, anims_num):
                     set_keyframe(curves, 0, bone.rotation_quaternion)
 
                 # scale
-                curves = [action.fcurves.new(data_path=bone_string + "scale", index=i) for i in (0, 1, 2)]
+                curves = [act.fcurves.new(data_path=bone_string + "scale", index=i) for i in (0, 1, 2)]
                 for c in curves:
                     c.group = group
 
@@ -184,7 +192,7 @@ def import_anim(context, file, arm_obj, anim_id, bones_num, anims_num):
     context.scene.frame_end = last_frame
 
     bpy.ops.object.mode_set(mode='OBJECT')
-    return action
+    return actions
 
 
 def import_ani(context, file, arm_obj, anim_id):
@@ -202,15 +210,14 @@ def import_ani(context, file, arm_obj, anim_id):
 
     anim_names = tuple(read_string(file, 256) for _ in range(anims_num))
     anim_frames_num = read_int(file, anims_num)
-    anim_id = max(0, min(anim_id, anims_num - 1))
+    if anim_id != ANIM_ID_ALL:
+        anim_id = max(0, min(anim_id, anims_num - 1))
 
-    action = import_anim(context, file, arm_obj, anim_id, bones_num, anims_num)
-    if not action:
-        return None
-
-    action.name = anim_names[anim_id]
-
-    return action
+    actions = import_anim(context, file, arm_obj, anim_id, bones_num, anims_num)
+    for k, act in actions.items():
+        act.name = anim_names[k]
+    
+    return actions
 
 
 def load(context, filepath, *, append_to_target, global_matrix=None):
@@ -227,6 +234,7 @@ def load(context, filepath, *, append_to_target, global_matrix=None):
         if not anim_names:
             return {'CANCELLED'}
 
+        arm_obj.dn_anim_list.add().anim_name = 'All'
         for n in anim_names:
             arm_obj.dn_anim_list.add().anim_name = n
         bpy.ops.dialog.anim_chooser_box('INVOKE_DEFAULT', filepath=filepath)
@@ -235,11 +243,14 @@ def load(context, filepath, *, append_to_target, global_matrix=None):
 
     if filepath.lower().endswith('.anim'):
         with open(filepath, 'rb') as fw:
-            action = import_anim(context, fw, arm_obj, 0, bones_num=0, anims_num=1)
-            if action:
-                action.name = os.path.basename(filepath)[:-5]
-                arm_obj.animation_data_create().action = action
-                return {'FINISHED'}
+            actions = import_anim(context, fw, arm_obj, 0, bones_num=0, anims_num=1)
+            if not actions:
+                return {'CANCELLED'}
+
+            act = actions[0]
+            act.name = os.path.basename(filepath)[:-5]
+            arm_obj.animation_data_create().action = act
+            return {'FINISHED'}
 
     return {'CANCELLED'}
 
@@ -250,9 +261,12 @@ def load_anim(context, filepath, anim_id):
         return {'CANCELLED'}
 
     with open(filepath, 'rb') as fw:
-        action = import_ani(context, fw, arm_obj, anim_id)
-        if action:
-            arm_obj.animation_data_create().action = action
-            return {'FINISHED'}
+        actions = import_ani(context, fw, arm_obj, anim_id)
+        if not actions:
+            return {'CANCELLED'}
+
+        for act in actions.values():
+            arm_obj.animation_data_create().action = act
+        return {'FINISHED'}
 
     return {'CANCELLED'}

@@ -14,21 +14,21 @@ def read_string(file, strlen=0):
 
 
 def read_int(file, num=1):
-    data = struct.unpack('<{}l'.format(num), file.read(4 * num))
+    data = struct.unpack(f'<{num}l', file.read(4 * num))
     if num == 1:
         data = data[0]
     return data
 
 
 def read_short(file, num=1):
-    data = struct.unpack('<{}h'.format(num), file.read(2 * num))
+    data = struct.unpack(f'<{num}h', file.read(2 * num))
     if num == 1:
         data = data[0]
     return data
 
 
 def read_float(file, num=1):
-    data = struct.unpack('<{}f'.format(num), file.read(4 * num))
+    data = struct.unpack(f'<{num}f', file.read(4 * num))
     if num == 1:
         data = data[0]
     return data

@@ -14,7 +14,7 @@ from bpy_extras.io_utils import (
 bl_info = {
     "name": "Import Dragon Nest Model / Animation",
     "author": "Psycrow",
-    "version": (0, 0, 1),
+    "version": (0, 1, 0),
     "blender": (2, 80, 0),
     "location": "File > Import-Export",
     "description": "Import Dragon Nest Model / Animation (.msh, .ani, .anim)",
@@ -60,7 +60,8 @@ class DN_AnimChooserBox(bpy.types.Operator):
         from . import import_dn_ani
         if not self.anim_list:
             return {'CANCELLED'}
-        return import_dn_ani.load_anim(context, self.filepath, int(self.anim_list))
+        anim_id = int(self.anim_list) - 1
+        return import_dn_ani.load_anim(context, self.filepath, anim_id)
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
