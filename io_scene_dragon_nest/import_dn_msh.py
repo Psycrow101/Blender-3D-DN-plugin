@@ -32,7 +32,7 @@ def add_transparent_node(node_tree):
 
     output_node = nodes.get('Material Output')
     bsdf_node = nodes.get('Principled BSDF')
-    texture_node = nodes.get('Image Texture')
+    texture_node = nodes.get(bpy.app.translations.pgettext('Image Texture'))
 
     mix_shader_node = nodes.new('ShaderNodeMixShader')
     transparent_node = nodes.new('ShaderNodeBsdfTransparent')

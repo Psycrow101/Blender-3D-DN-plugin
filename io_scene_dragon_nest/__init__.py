@@ -14,7 +14,7 @@ from bpy_extras.io_utils import (
 bl_info = {
     "name": "Import Dragon Nest Model / Animation",
     "author": "Psycrow",
-    "version": (0, 1, 0),
+    "version": (0, 1, 1),
     "blender": (2, 80, 0),
     "location": "File > Import-Export",
     "description": "Import Dragon Nest Model / Animation (.msh, .ani, .anim)",
