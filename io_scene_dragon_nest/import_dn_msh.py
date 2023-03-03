@@ -221,15 +221,12 @@ def import_msh(context, file, skn_data, msh_size, append_armature):
 
         file.seek(0x200 - 0x10, os.SEEK_CUR)
 
-        vertices = []
-        faces = []
-        uv = []
-
         bpy.ops.object.mode_set(mode='OBJECT')
         mesh = bpy.data.meshes.new(mesh_name)
 
         # faces
         # todo: test
+        faces = []
         if render_mode & 0x1:
             v1 = read_short(file)
             v2 = read_short(file)
@@ -249,21 +246,14 @@ def import_msh(context, file, skn_data, msh_size, append_armature):
             for _ in range(int(indices_num / 3)):
                 faces.append(read_short(file, 3))
 
-        # vertices
-        for _ in range(verts_num):
-            vertices.append(read_float(file, 3))
+        # vertices, normals, uvs
+        vertices = [read_float(file, 3) for _ in range(verts_num)]
+        normals = [read_float(file, 3) for _ in range(verts_num)]
+        uvs = [[read_float(file), 1.0 - read_float(file)] for _ in range(verts_num)]
 
         mesh.from_pydata(vertices, [], faces)
-
-        # normals
-        for i in range(verts_num):
-            mesh.vertices[i].normal = read_float(file, 3)
-
-        # uvs
-        for _ in range(verts_num):
-            u = read_float(file)
-            v = 1.0 - read_float(file)
-            uv.append([u, v])
+        mesh.use_auto_smooth = True
+        mesh.normals_split_custom_set_from_vertices(normals)
 
         bm = bmesh.new()
         bm.from_mesh(mesh)
@@ -272,12 +262,8 @@ def import_msh(context, file, skn_data, msh_size, append_armature):
         bm.faces.ensure_lookup_table()
         for f in range(len(faces)):
             for i in range(3):
-                bm.faces[f].loops[i][uv_layer].uv = uv[faces[f][i]]
+                bm.faces[f].loops[i][uv_layer].uv = uvs[faces[f][i]]
         bm.to_mesh(mesh)
-
-        # make smooth
-        for p in mesh.polygons:
-            p.use_smooth = True
 
         mesh_obj = bpy.data.objects.new(mesh_name, mesh)
         collection.objects.link(mesh_obj)
