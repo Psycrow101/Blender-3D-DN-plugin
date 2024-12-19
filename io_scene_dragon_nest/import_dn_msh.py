@@ -1,6 +1,5 @@
 import bpy
 import bmesh
-import mathutils
 import os
 from . binary_reader import *
 from bpy_extras.image_utils import load_image
@@ -137,7 +136,7 @@ def import_msh(context, file, skn_data, msh_size, append_armature):
         return None
 
     msh_version = read_int(file)
-    if msh_version not in (11, 12, 13):
+    if msh_version not in range(10, 14):
         context.window_manager.popup_menu(invalid_msh_version, title="Error", icon='ERROR')
         return None
 
@@ -252,7 +251,8 @@ def import_msh(context, file, skn_data, msh_size, append_armature):
         uvs = [[read_float(file), 1.0 - read_float(file)] for _ in range(verts_num)]
 
         mesh.from_pydata(vertices, [], faces)
-        mesh.use_auto_smooth = True
+        if bpy.app.version < (4, 1, 0):
+            mesh.use_auto_smooth = True
         mesh.normals_split_custom_set_from_vertices(normals)
 
         bm = bmesh.new()
