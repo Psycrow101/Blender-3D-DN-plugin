@@ -5,6 +5,14 @@ and animations from Dragon Nest game into the editor.
 It works with formats such as: models (`.msh`), skin data (`.skn`) and animations (`.ani`, `.anim`).
 The plugin cannot export loaded models.
 
+## TODO
+* Export support
+* Vertex color import support
+* Collisions import support
+* Dummies import support
+* Fix bone placement for some animations
+* Materials properties support
+
 ## Requirements
 
-* Blender 3D (2.80)
+* Blender (2.80 and above)
