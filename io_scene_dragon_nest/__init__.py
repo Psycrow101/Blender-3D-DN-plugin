@@ -2,7 +2,6 @@ import bpy
 from bpy.props import (
         BoolProperty,
         StringProperty,
-        CollectionProperty,
         EnumProperty,
         )
 from bpy_extras.io_utils import (
@@ -14,7 +13,7 @@ from bpy_extras.io_utils import (
 bl_info = {
     "name": "Import Dragon Nest Model / Animation",
     "author": "Psycrow",
-    "version": (0, 1, 1),
+    "version": (0, 2, 0),
     "blender": (2, 80, 0),
     "location": "File > Import-Export",
     "description": "Import Dragon Nest Model / Animation (.msh, .ani, .anim)",
@@ -32,39 +31,44 @@ if "bpy" in locals():
         importlib.reload(import_dn_ani)
 
 
-class DN_AnimList(bpy.types.PropertyGroup):
-    anim_name: StringProperty(name="DN Anim Name", options={'HIDDEN'})
-
-
 class DN_AnimChooserBox(bpy.types.Operator):
     bl_idname = "dialog.anim_chooser_box"
     bl_label = "Choose animation for import"
     bl_options = {'REGISTER'}
 
-    filepath: StringProperty(options={'HIDDEN'})
-
     def anim_enum_callback(self, context):
-        items = []
+        global ani_importer
 
-        armature_obj = context.view_layer.objects.active
-        if armature_obj:
-            for i, n in enumerate(armature_obj.dn_anim_list):
-                anim_name = n.anim_name.encode('ascii', errors='ignore').decode()
-                items.append((str(i), anim_name, '', i))
+        items = [("0", "*All*", "", 0)]
+        for i, name in enumerate(ani_importer.ani.names):
+            items.append((str(i+1), name, "", i+1))
 
         return items
 
-    anim_list: EnumProperty(items=anim_enum_callback, name='Animation Name')
+    anim_list: EnumProperty(items=anim_enum_callback, name="Animation Name")
 
     def execute(self, context):
-        from . import import_dn_ani
+        global ani_importer
+
         if not self.anim_list:
             return {'CANCELLED'}
-        anim_id = int(self.anim_list) - 1
-        return import_dn_ani.load_anim(context, self.filepath, anim_id)
+
+        options = {
+            "animation_id": int(self.anim_list) - 1,
+        }
+
+        ani_importer.import_data(context, options)
+        imported = ani_importer.imported
+
+        ani_importer = None
+        return {'FINISHED'} if imported else {'CANCELLED'}
 
     def invoke(self, context, event):
         return context.window_manager.invoke_props_dialog(self)
+
+    def cancel(self, context):
+        global ani_importer
+        ani_importer = None
 
 
 @orientation_helper(axis_forward='-Z', axis_up='Y')
@@ -93,10 +97,19 @@ class ImportDragonNest(bpy.types.Operator, ImportHelper):
                                                     from_up=self.axis_up,
                                                     ).to_4x4()
 
-        if keywords["filepath"].lower().endswith(".msh"):
-            return import_dn_msh.load(context, **keywords)
+        filepath = keywords["filepath"]
+        if filepath.lower().endswith(".msh"):
+            msh_importer = import_dn_msh.load(context, **keywords)
+            return {'FINISHED'} if msh_importer else {'CANCELLED'}
 
-        return import_dn_ani.load(context, **keywords)
+        global ani_importer
+        ani_importer = import_dn_ani.load(context, filepath)
+        if not ani_importer:
+            return {'CANCELLED'}
+
+        if not ani_importer.imported:
+            bpy.ops.dialog.anim_chooser_box('INVOKE_DEFAULT')
+        return {'FINISHED'}
 
 
 def menu_func_import(self, context):
@@ -106,7 +119,6 @@ def menu_func_import(self, context):
 
 classes = (
     ImportDragonNest,
-    DN_AnimList,
     DN_AnimChooserBox,
 )
 
@@ -115,7 +127,6 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
 
-    bpy.types.Object.dn_anim_list = CollectionProperty(type=DN_AnimList, options={'HIDDEN'})
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
 
 

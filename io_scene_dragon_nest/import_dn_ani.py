@@ -1,37 +1,11 @@
 import bpy
-import mathutils
 import os
-from . binary_reader import *
+
+from mathutils import Quaternion, Vector, Matrix
+
+from .types.ani import ANI, ANIM, AnimationBone
 
 ANIM_ID_ALL = -1
-
-
-def trans_matrix(v):
-    return mathutils.Matrix.Translation(v)
-
-
-def scale_matrix(v):
-    mat = mathutils.Matrix.Identity(4)
-    mat[0][0], mat[1][1], mat[2][2] = v[0], v[1], v[2]
-    return mat
-
-
-def short_to_angle(v):
-    return v * 2 ** -15
-
-
-def set_posebone_matrix(bone, matrix):
-    if bone.parent:
-        bone.matrix = bone.parent.matrix @ matrix
-    else:
-        bone.matrix = matrix
-
-
-def set_keyframe(curves, frame, values):
-    for i, c in enumerate(curves):
-        c.keyframe_points.add(1)
-        c.keyframe_points[-1].co = frame, values[i]
-        c.keyframe_points[-1].interpolation = 'LINEAR'
 
 
 def invalid_ani_type(self, context):
@@ -42,231 +16,241 @@ def invalid_armature(self, context):
     self.layout.label(text='Invalid armature')
 
 
-def get_anim_names(file):
-    ani_type = read_string(file, 256)
-    if 'Eternity Engine Ani File' not in ani_type:
-        bpy.context.window_manager.popup_menu(invalid_ani_type, title='Error', icon='ERROR')
-        return None
-
-    # todo: check version
-    ani_version = file.read(4)
-    file.seek(4, os.SEEK_CUR)
-
-    anims_num = read_int(file)
-
-    file.seek(0x400)
-
-    anim_names = tuple(read_string(file, 256) for _ in range(anims_num))
-    return anim_names
+def trans_matrix(v):
+    return Matrix.Translation(v)
 
 
-def import_anim(context, file, arm_obj, anim_id, bones_num, anims_num):
-    arm = arm_obj.data
-    actions = {}
+def rotation_matrix(v):
+    return v.to_matrix().to_4x4()
 
-    end_pos = None
 
-    is_anim = False
-    if not bones_num:
-        bones_num = len(arm.bones)
-        anims_num = 1
-        is_anim = True
+def scale_matrix(v):
+    mat = Matrix.Identity(4)
+    mat[0][0], mat[1][1], mat[2][2] = v[0], v[1], v[2]
+    return mat
 
-        file.seek(0, os.SEEK_END)
-        end_pos = file.tell()
-        file.seek(0)
 
+def set_posebone_matrix(bone, matrix):
+    if bone.parent:
+        bone.matrix = bone.parent.matrix @ matrix
+    else:
+        bone.matrix = matrix
+
+
+def set_keyframe(fcurves, frame, values):
+    for i, fc in enumerate(fcurves):
+        fc.keyframe_points.add(1)
+        fc.keyframe_points[-1].co = frame, values[i]
+        fc.keyframe_points[-1].interpolation = 'LINEAR'
+
+
+def find_last_keyframe_time(action):
     last_frame = 0
+    for fc in action.fcurves:
+        for kf in fc.keyframe_points:
+            frame = kf.co[0]
+            if frame > last_frame:
+                last_frame = frame
+    return int(last_frame)
 
-    for b in range(bones_num):
-        if end_pos and end_pos == file.tell():
-            return actions
 
-        bpy.ops.object.mode_set(mode='EDIT')
+def get_active_armature(context):
+    arm_obj = context.view_layer.objects.active
+    if arm_obj and type(arm_obj.data) == bpy.types.Armature:
+        return arm_obj
 
-        if is_anim:
-            bone_name = read_string(file)
-            bone_parent_name = read_string(file)
-        else:
-            bone_name = read_string(file, 256)
-            bone_parent_name = read_string(file, 256)
 
-        arm_bone = arm.edit_bones.get(bone_name)
+def connect_armature_bones(context, armature, animation_bones: list[AnimationBone]) -> bool:
+    bpy.ops.object.mode_set(mode='EDIT')
+
+    for ani_bone in animation_bones:
+        arm_bone = armature.edit_bones.get(ani_bone.name) or armature.edit_bones.get(ani_bone.name[:-2])
         if not arm_bone:
             context.window_manager.popup_menu(invalid_armature, title='Error', icon='ERROR')
-            for act in actions.values():
-                bpy.data.actions.remove(act)
             bpy.ops.object.mode_set(mode='OBJECT')
-            return {}
+            return False
 
-        arm_bone_parent = arm.edit_bones.get(bone_parent_name)
-        if arm_bone_parent:
-            arm_bone.parent = arm_bone_parent
+        arm_bone.parent = armature.edit_bones.get(ani_bone.parent_name)
 
-        if not is_anim:
-            file.seek(0x200, os.SEEK_CUR)
+    return True
 
-        bpy.ops.object.mode_set(mode='POSE')
 
-        for k in range(anims_num):
-            if anim_id in (ANIM_ID_ALL, k):
-                act = actions.get(k)
-                if not act:
-                    act = bpy.data.actions.new("dn_animation %d" % k)
-                    actions[k] = act
+def create_actions(context, armature_object, animation_bones: list[AnimationBone], anim_id=ANIM_ID_ALL):
+    bpy.ops.object.mode_set(mode='POSE')
 
-                bone = arm_obj.pose.bones[bone_name]
+    actions = {}
 
-                base_loc = read_float(file, 3)
-                base_rot = read_float(file, 4)
-                base_scale = read_float(file, 3)
+    for ani_bone in animation_bones:
+        bone = armature_object.pose.bones.get(ani_bone.name) or armature_object.pose.bones.get(ani_bone.name[:-2])
 
-                base_rot_quaternion = mathutils.Quaternion((base_rot[3], base_rot[0], base_rot[1], base_rot[2]))
-                base_mat = trans_matrix(base_loc) @ base_rot_quaternion.to_matrix().to_4x4() @ scale_matrix(base_scale)
+        for act_idx, anim in enumerate(ani_bone.animations):
+            if anim_id not in (ANIM_ID_ALL, act_idx):
+                continue
+
+            act = actions.get(act_idx)
+            if not act:
+                act = bpy.data.actions.new("dn_animation %d" % act_idx)
+                actions[act_idx] = act
+
+            base_location = Vector(anim.base_location.unpack())
+            base_rotation = Quaternion((
+                anim.base_rotation.w,
+                anim.base_rotation.x,
+                anim.base_rotation.y,
+                anim.base_rotation.z,
+            ))
+            base_scale = Vector(anim.base_scale.unpack())
+            base_mat = trans_matrix(base_location) @ rotation_matrix(base_rotation) @ scale_matrix(base_scale)
+            set_posebone_matrix(bone, base_mat)
+
+            group = act.groups.new(name=bone.name)
+            path_prefix = f'pose.bones["{bone.name}"].'
+
+            # location
+            fcurves = [act.fcurves.new(data_path=path_prefix + "location", index=i) for i in range(3)]
+            for fc in fcurves:
+                 fc.group = group
+
+            if anim.locations:
+                for kf in anim.locations:
+                    set_posebone_matrix(bone, trans_matrix(kf.value.unpack()))
+                    set_keyframe(fcurves, kf.frame, bone.location)
+            else:
                 set_posebone_matrix(bone, base_mat)
+                set_keyframe(fcurves, 0, bone.location)
 
-                group = act.groups.new(name=bone_name)
-                bone_string = f'pose.bones["{bone_name}"].'
+            # roation
+            fcurves = [act.fcurves.new(data_path=path_prefix + "rotation_quaternion", index=i) for i in range(4)]
+            for fc in fcurves:
+                 fc.group = group
 
-                # location
-                curves = [act.fcurves.new(data_path=bone_string + "location", index=i) for i in (0, 1, 2)]
-                for c in curves:
-                    c.group = group
-
-                loc_frames_num = read_int(file)
-                for f in range(loc_frames_num):
-                    frame = read_short(file)
-                    if frame > last_frame:
-                        last_frame = frame
-
-                    set_posebone_matrix(bone, trans_matrix(read_float(file, 3)))
-                    set_keyframe(curves, frame, bone.location)
-
-                if not loc_frames_num:
-                    set_posebone_matrix(bone, base_mat)
-                    set_keyframe(curves, 0, bone.location)
-
-                # roation
-                curves = [act.fcurves.new(data_path=bone_string + "rotation_quaternion", index=i) for i in range(4)]
-                for c in curves:
-                    c.group = group
-
-                rot_frames_num = read_int(file)
-                for f in range(rot_frames_num):
-                    frame = read_short(file)
-                    if frame > last_frame:
-                        last_frame = frame
-
-                    rot = read_short(file, 4)
-                    rot_quaternion = mathutils.Quaternion(tuple(short_to_angle(rot[i]) for i in (3, 0, 1, 2)))
-                    set_posebone_matrix(bone, rot_quaternion.to_matrix().to_4x4())
-                    set_keyframe(curves, frame, bone.rotation_quaternion)
-
-                if not rot_frames_num:
-                    set_posebone_matrix(bone, base_mat)
-                    set_keyframe(curves, 0, bone.rotation_quaternion)
-
-                # scale
-                curves = [act.fcurves.new(data_path=bone_string + "scale", index=i) for i in (0, 1, 2)]
-                for c in curves:
-                    c.group = group
-
-                scale_frames_num = read_int(file)
-                for f in range(scale_frames_num):
-                    frame = read_short(file)
-                    if frame > last_frame:
-                        last_frame = frame
-
-                    set_keyframe(curves, frame, read_float(file, 3))
-
-                if not scale_frames_num:
-                    set_keyframe(curves, 0, base_scale)
+            if anim.rotations:
+                for kf in anim.rotations:
+                    rotation = Quaternion((kf.value.w, kf.value.x, kf.value.y, kf.value.z))
+                    set_posebone_matrix(bone, rotation_matrix(rotation))
+                    set_keyframe(fcurves, kf.frame, bone.rotation_quaternion)
 
             else:
-                file.seek(40, os.SEEK_CUR)
-                file.seek(read_int(file) * 14, os.SEEK_CUR)
-                file.seek(read_int(file) * 10, os.SEEK_CUR)
-                file.seek(read_int(file) * 14, os.SEEK_CUR)
+                set_posebone_matrix(bone, base_mat)
+                set_keyframe(fcurves, 0, bone.rotation_quaternion)
 
-    context.scene.frame_start = 0
-    context.scene.frame_end = last_frame
+            # scale
+            fcurves = [act.fcurves.new(data_path=path_prefix + "scale", index=i) for i in range(3)]
+            for c in fcurves:
+                 c.group = group
 
-    bpy.ops.object.mode_set(mode='OBJECT')
+            if anim.scales:
+                for kf in anim.scales:
+                    set_keyframe(fcurves, kf.frame, kf.value.unpack())
+            else:
+                set_keyframe(fcurves, 0, base_scale)
+
     return actions
 
 
-def import_ani(context, file, arm_obj, anim_id):
-    ani_type = read_string(file, 256)
-    if 'Eternity Engine Ani File' not in ani_type:
-        context.window_manager.popup_menu(invalid_ani_type, title='Error', icon='ERROR')
+class AniImporter:
+
+    def import_data(self, context, options):
+        anim_id = options.get("animation_id")
+        if anim_id is None:
+            anim_id = ANIM_ID_ALL
+        elif anim_id != ANIM_ID_ALL:
+            anim_id = max(0, min(anim_id, len(self.ani.names) - 1))
+
+        arm_obj = get_active_armature(context)
+        if not arm_obj:
+            return
+
+        arm = arm_obj.data
+        if not connect_armature_bones(context, arm, self.ani.bones):
+            return
+
+        actions = create_actions(context, arm_obj, self.ani.bones, anim_id)
+        for act_idx in sorted(actions):
+            act = actions[act_idx]
+            act.name = self.ani.names[act_idx]
+            self.actions.append(act)
+
+        animation_data = arm_obj.animation_data or arm_obj.animation_data_create()
+        animation_data.action = self.actions[-1]
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        context.scene.frame_start = 0
+        context.scene.frame_end = find_last_keyframe_time(animation_data.action)
+
+        self.imported = True
+
+    def load_file(self, context, filename) -> bool:
+        self.ani = ANI()
+        self.ani.load_file(filename)
+
+        if not self.ani.file_type.startswith("Eternity Engine Ani File"):
+            context.window_manager.popup_menu(invalid_ani_type, title='Error', icon='ERROR')
+            return False
+
+        return True
+
+    def __init__(self):
+        self.ani = None
+        self.actions = []
+        self.imported = False
+
+
+class AnimImporter:
+
+    def import_data(self, context, options):
+        arm_obj = get_active_armature(context)
+        if not arm_obj:
+            return
+
+        arm = arm_obj.data
+        if not connect_armature_bones(context, arm, self.anim.bones):
+            return
+
+        actions = create_actions(context, arm_obj, self.anim.bones)
+        self.action = actions[0]
+
+        animation_data = arm_obj.animation_data or arm_obj.animation_data_create()
+        animation_data.action = self.action
+
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+        context.scene.frame_start = 0
+        context.scene.frame_end = find_last_keyframe_time(animation_data.action)
+
+        self.imported = True
+
+    def load_file(self, context, filename) -> bool:
+        self.anim = ANIM()
+        self.anim.load_file(filename)
+        return True
+
+    def __init__(self):
+        self.anim = None
+        self.action = None
+        self.imported = False
+
+
+def load(context, filepath):
+    arm_obj = get_active_armature(context)
+    if not arm_obj:
         return None
 
-    # todo: check version
-    ani_version = file.read(4)
+    if filepath.lower().endswith(".ani"):
+        importer = AniImporter()
+        if not importer.load_file(context, filepath):
+            return None
 
-    bones_num, anims_num = read_int(file, 2)
+    if filepath.lower().endswith(".anim"):
+        importer = AnimImporter()
+        if not importer.load_file(context, filepath):
+            return None
 
-    file.seek(0x400)
+        importer.import_data(context, {})
+        if not importer.action:
+            return None
 
-    anim_names = tuple(read_string(file, 256) for _ in range(anims_num))
-    anim_frames_num = read_int(file, anims_num)
-    if anim_id != ANIM_ID_ALL:
-        anim_id = max(0, min(anim_id, anims_num - 1))
+        importer.action.name = os.path.basename(filepath)[:-5]
 
-    actions = import_anim(context, file, arm_obj, anim_id, bones_num, anims_num)
-    for k, act in actions.items():
-        act.name = anim_names[k]
-    
-    return actions
-
-
-def load(context, filepath, *, append_to_target, global_matrix=None):
-    arm_obj = context.view_layer.objects.active
-    if not arm_obj or type(arm_obj.data) != bpy.types.Armature:
-        return {'CANCELLED'}
-
-    if filepath.lower().endswith('.ani'):
-        anim_names = None
-        arm_obj.dn_anim_list.clear()
-        with open(filepath, 'rb') as fw:
-            anim_names = get_anim_names(fw)
-
-        if not anim_names:
-            return {'CANCELLED'}
-
-        arm_obj.dn_anim_list.add().anim_name = 'All'
-        for n in anim_names:
-            arm_obj.dn_anim_list.add().anim_name = n
-        bpy.ops.dialog.anim_chooser_box('INVOKE_DEFAULT', filepath=filepath)
-
-        return {'FINISHED'}
-
-    if filepath.lower().endswith('.anim'):
-        with open(filepath, 'rb') as fw:
-            actions = import_anim(context, fw, arm_obj, 0, bones_num=0, anims_num=1)
-            if not actions:
-                return {'CANCELLED'}
-
-            act = actions[0]
-            act.name = os.path.basename(filepath)[:-5]
-            arm_obj.animation_data_create().action = act
-            return {'FINISHED'}
-
-    return {'CANCELLED'}
-
-
-def load_anim(context, filepath, anim_id):
-    arm_obj = context.view_layer.objects.active
-    if not arm_obj or type(arm_obj.data) != bpy.types.Armature:
-        return {'CANCELLED'}
-
-    with open(filepath, 'rb') as fw:
-        actions = import_ani(context, fw, arm_obj, anim_id)
-        if not actions:
-            return {'CANCELLED'}
-
-        for act in actions.values():
-            arm_obj.animation_data_create().action = act
-        return {'FINISHED'}
-
-    return {'CANCELLED'}
+    return importer
