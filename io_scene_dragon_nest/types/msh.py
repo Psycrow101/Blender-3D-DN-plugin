@@ -172,7 +172,8 @@ class Collision:
             self.primitive = PrimitiveCapsule.read(reader)
 
         elif self.type == CollisionType.TRIANGLE:
-            pass
+            num = reader.read_int()
+            self.primitive = [reader.read_float(9) for _ in range(num)]
 
         elif self.type == CollisionType.TRIANGLE_LIST:
             triangles_num = reader.read_int()

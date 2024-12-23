@@ -39,6 +39,9 @@ class DN_AnimChooserBox(bpy.types.Operator):
     def anim_enum_callback(self, context):
         global ani_importer
 
+        if not ani_importer:
+            return []
+
         items = [("0", "*All*", "", 0)]
         for i, name in enumerate(ani_importer.ani.names):
             items.append((str(i+1), name, "", i+1))
