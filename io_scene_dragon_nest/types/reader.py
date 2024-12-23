@@ -1,4 +1,6 @@
-from struct import unpack, unpack_from
+from struct import unpack_from
+from typing import Tuple, Union
+
 
 class Reader:
 
@@ -11,21 +13,21 @@ class Reader:
         self._pos += len(data)
         return data
 
-    def read_float(self, num=1) -> float | tuple[float]:
+    def read_float(self, num=1) -> Union[float, Tuple[float]]:
         data = unpack_from(f'<{num}f', self._data, self._pos)
         if num == 1:
             data = data[0]
         self._pos += 4 * num
         return data
 
-    def read_int(self, num=1) -> int | tuple[int]:
+    def read_int(self, num=1) -> Union[int, Tuple[int]]:
         data = unpack_from(f'<{num}l', self._data, self._pos)
         if num == 1:
             data = data[0]
         self._pos += 4 * num
         return data
 
-    def read_short(self, num=1) -> int | tuple[int]:
+    def read_short(self, num=1) -> Union[int, Tuple[int]]:
         data = unpack_from(f'<{num}h', self._data, self._pos)
         if num == 1:
             data = data[0]

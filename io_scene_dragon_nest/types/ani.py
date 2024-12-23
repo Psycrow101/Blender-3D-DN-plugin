@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import List, Union
 
 from .common import *
 from .reader import Reader
@@ -7,7 +8,7 @@ from .reader import Reader
 @dataclass
 class KeyFrame:
     frame: int
-    value: Vector3D | Vector4D
+    value: Union[Vector3D, Vector4D]
 
 
 @dataclass
@@ -16,9 +17,9 @@ class Animation:
     base_rotation: Vector4D
     base_scale: Vector3D
 
-    locations: list[KeyFrame]
-    rotations: list[KeyFrame]
-    scales: list[KeyFrame]
+    locations: List[KeyFrame]
+    rotations: List[KeyFrame]
+    scales: List[KeyFrame]
 
     @classmethod
     def read(cls, reader: Reader, read_frame_func, read_rotation_func):
@@ -55,7 +56,7 @@ class Animation:
 class AnimationBone:
     name: str
     parent_name: str
-    animations: list[Animation]
+    animations: List[Animation]
 
 
 class ANIM:
@@ -77,7 +78,7 @@ class ANIM:
             self.load_memory(data)
 
     def clear(self):
-        self.bones: list[AnimationBone] = []
+        self.bones: List[AnimationBone] = []
 
     def __init__(self):
         self.clear()
@@ -130,9 +131,9 @@ class ANI:
     def clear(self):
         self.file_type = ""
         self.version = 0
-        self.names: list[str] = []
-        self.frames_num: list[int] = []
-        self.bones: list[AnimationBone] = []
+        self.names: List[str] = []
+        self.frames_num: List[int] = []
+        self.bones: List[AnimationBone] = []
 
     def __init__(self):
         self.clear()

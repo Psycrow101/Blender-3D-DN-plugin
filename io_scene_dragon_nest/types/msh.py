@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import IntEnum
+from typing import List
 
 from .common import *
 from .reader import Reader
@@ -149,7 +150,7 @@ class PrimitiveTriangle:
 
 @dataclass
 class PrimitiveTriangleList:
-    triangles: list[PrimitiveTriangle]
+    triangles: List[PrimitiveTriangle]
 
 
 class Collision:
@@ -225,9 +226,9 @@ class MSH:
         self.version = 0
         self.bb_max = Vector3D(0, 0, 0)
         self.bb_min = Vector3D(0, 0, 0)
-        self.bones: list[Bone] = []
-        self.meshes: list[Mesh] = []
-        self.collisions: list[Collision] = []
+        self.bones: List[Bone] = []
+        self.meshes: List[Mesh] = []
+        self.collisions: List[Collision] = []
 
     def __init__(self):
         self.clear()

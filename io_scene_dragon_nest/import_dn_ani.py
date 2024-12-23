@@ -2,6 +2,7 @@ import bpy
 import os
 
 from mathutils import Quaternion, Vector, Matrix
+from typing import List
 
 from .types.ani import ANI, ANIM, AnimationBone
 
@@ -60,7 +61,7 @@ def get_active_armature(context):
         return arm_obj
 
 
-def connect_armature_bones(context, armature, animation_bones: list[AnimationBone]) -> bool:
+def connect_armature_bones(context, armature, animation_bones: List[AnimationBone]) -> bool:
     bpy.ops.object.mode_set(mode='EDIT')
 
     for ani_bone in animation_bones:
@@ -75,7 +76,7 @@ def connect_armature_bones(context, armature, animation_bones: list[AnimationBon
     return True
 
 
-def create_actions(context, armature_object, animation_bones: list[AnimationBone], anim_id=ANIM_ID_ALL):
+def create_actions(context, armature_object, animation_bones: List[AnimationBone], anim_id=ANIM_ID_ALL):
     bpy.ops.object.mode_set(mode='POSE')
 
     actions = {}

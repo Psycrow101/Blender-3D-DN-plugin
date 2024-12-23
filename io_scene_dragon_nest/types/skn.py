@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Any
+from typing import Any, List
 
 from .common import *
 from .reader import Reader
@@ -53,7 +53,7 @@ class Material:
     effect: str
     alpha: float
     alpha_blend: int
-    properties: list[MaterialProperty]
+    properties: List[MaterialProperty]
 
     @classmethod
     def read(cls, reader: Reader):
@@ -104,7 +104,7 @@ class SKN:
         self.file_type = ""
         self.name = ""
         self.version = 0
-        self.materials: list[Material] = []
+        self.materials: List[Material] = []
 
     def __init__(self):
         self.clear()
