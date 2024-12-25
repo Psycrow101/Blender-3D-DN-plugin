@@ -74,6 +74,17 @@ class DN_AnimChooserBox(bpy.types.Operator):
         ani_importer = None
 
 
+class DN_EditBoneProps(bpy.types.PropertyGroup):
+
+    scale : bpy.props.FloatVectorProperty(
+        size = 3,
+        default = (0.0, 0.0, 0.0),
+    )
+
+    def register():
+        bpy.types.EditBone.dragon_nest = bpy.props.PointerProperty(type=DN_EditBoneProps)
+
+
 @orientation_helper(axis_forward='-Z', axis_up='Y')
 class ImportDragonNest(bpy.types.Operator, ImportHelper):
     bl_idname = "import_scene.dragon_nest"
@@ -123,6 +134,7 @@ def menu_func_import(self, context):
 classes = (
     ImportDragonNest,
     DN_AnimChooserBox,
+    DN_EditBoneProps,
 )
 
 

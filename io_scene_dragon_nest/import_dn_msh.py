@@ -140,10 +140,13 @@ class MshImporter:
 
             # create bones
             for msh_bone in self.msh.bones:
+                mat = Matrix(msh_bone.matrix.unpack()).transposed().inverted_safe()
+
                 bone = arm.edit_bones.new(msh_bone.name)
                 bone.head = (0, 0, 0)
                 bone.tail = (0, 0, 1)
-                bone.matrix = Matrix(msh_bone.matrix.unpack()).transposed().inverted_safe()
+                bone.matrix = mat
+                bone.dragon_nest.scale = mat.to_scale()
 
         # create meshes
         for msh_mesh in self.msh.meshes:

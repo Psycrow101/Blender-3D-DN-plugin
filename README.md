@@ -10,7 +10,6 @@ The plugin cannot export loaded models.
 * Vertex color import support
 * Collisions import support
 * Dummies import support
-* Fix bone placement for some animations
 * Materials properties support
 
 ## Requirements

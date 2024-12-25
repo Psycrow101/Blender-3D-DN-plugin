@@ -17,7 +17,7 @@ def invalid_armature(self, context):
     self.layout.label(text='Invalid armature')
 
 
-def trans_matrix(v):
+def translation_matrix(v):
     return Matrix.Translation(v)
 
 
@@ -29,13 +29,6 @@ def scale_matrix(v):
     mat = Matrix.Identity(4)
     mat[0][0], mat[1][1], mat[2][2] = v[0], v[1], v[2]
     return mat
-
-
-def set_posebone_matrix(bone, matrix):
-    if bone.parent:
-        bone.matrix = bone.parent.matrix @ matrix
-    else:
-        bone.matrix = matrix
 
 
 def set_keyframe(fcurves, frame, values):
@@ -61,6 +54,21 @@ def get_active_armature(context):
         return arm_obj
 
 
+def get_armature_matrices(armature_object):
+    bpy.ops.object.mode_set(mode='EDIT')
+
+    matrices = {}
+    for bone in armature_object.data.edit_bones:
+        matrices[bone.name] = bone.matrix @ scale_matrix(bone.dragon_nest.scale)
+
+    bpy.ops.object.mode_set(mode='OBJECT')
+    return matrices
+
+
+def local_to_basis_matrix(local_matrix, global_matrix, parent_matrix):
+    return global_matrix.inverted() @ (parent_matrix @ local_matrix)
+
+
 def connect_armature_bones(context, armature, animation_bones: List[AnimationBone]) -> bool:
     bpy.ops.object.mode_set(mode='EDIT')
 
@@ -73,78 +81,69 @@ def connect_armature_bones(context, armature, animation_bones: List[AnimationBon
 
         arm_bone.parent = armature.edit_bones.get(ani_bone.parent_name)
 
+    bpy.ops.object.mode_set(mode='OBJECT')
     return True
 
 
-def create_actions(context, armature_object, animation_bones: List[AnimationBone], anim_id=ANIM_ID_ALL):
-    bpy.ops.object.mode_set(mode='POSE')
-
+def create_actions(armature_object, animation_bones: List[AnimationBone], anim_id=ANIM_ID_ALL):
+    def_matrices = get_armature_matrices(armature_object)
     actions = {}
 
     for ani_bone in animation_bones:
-        bone = armature_object.pose.bones.get(ani_bone.name) or armature_object.pose.bones.get(ani_bone.name[:-2])
+        bone = armature_object.data.bones.get(ani_bone.name) or armature_object.data.bones.get(ani_bone.name[:-2])
+        def_mat = def_matrices[bone.name]
+        parent_def_mat = def_matrices[bone.parent.name] if bone.parent else Matrix()
 
         for act_idx, anim in enumerate(ani_bone.animations):
             if anim_id not in (ANIM_ID_ALL, act_idx):
                 continue
 
-            act = actions.get(act_idx)
-            if not act:
-                act = bpy.data.actions.new("dn_animation %d" % act_idx)
-                actions[act_idx] = act
+            act = actions.get(act_idx) or bpy.data.actions.new("dn_animation %d" % act_idx)
+            actions[act_idx] = act
 
-            base_location = Vector(anim.base_location.unpack())
-            base_rotation = Quaternion((
+            group = act.groups.new(name=bone.name)
+            path_prefix = f'pose.bones["{bone.name}"].'
+
+            fcurves_location = [act.fcurves.new(data_path=path_prefix + "location", index=i) for i in range(3)]
+            fcurves_rotation = [act.fcurves.new(data_path=path_prefix + "rotation_quaternion", index=i) for i in range(4)]
+            fcurves_scale    = [act.fcurves.new(data_path=path_prefix + "scale", index=i) for i in range(3)]
+
+            for fc in fcurves_location + fcurves_rotation + fcurves_scale:
+                 fc.group = group
+
+            loc = Vector(anim.base_location.unpack())
+            rot = Quaternion((
                 anim.base_rotation.w,
                 anim.base_rotation.x,
                 anim.base_rotation.y,
                 anim.base_rotation.z,
             ))
-            base_scale = Vector(anim.base_scale.unpack())
-            base_mat = trans_matrix(base_location) @ rotation_matrix(base_rotation) @ scale_matrix(base_scale)
-            set_posebone_matrix(bone, base_mat)
+            scl = Vector(anim.base_scale.unpack())
 
-            group = act.groups.new(name=bone.name)
-            path_prefix = f'pose.bones["{bone.name}"].'
+            mat = translation_matrix(loc) @ rotation_matrix(rot) @ scale_matrix(scl)
+            mat_basis = local_to_basis_matrix(mat, def_mat, parent_def_mat)
 
-            # location
-            fcurves = [act.fcurves.new(data_path=path_prefix + "location", index=i) for i in range(3)]
-            for fc in fcurves:
-                 fc.group = group
+            set_keyframe(fcurves_location, 0, mat_basis.to_translation())
+            set_keyframe(fcurves_rotation, 0, mat_basis.to_quaternion())
+            set_keyframe(fcurves_scale, 0, mat_basis.to_scale())
 
-            if anim.locations:
-                for kf in anim.locations:
-                    set_posebone_matrix(bone, trans_matrix(kf.value.unpack()))
-                    set_keyframe(fcurves, kf.frame, bone.location)
-            else:
-                set_posebone_matrix(bone, base_mat)
-                set_keyframe(fcurves, 0, bone.location)
+            for kf in anim.locations:
+                loc = Vector(kf.value.unpack())
+                mat = translation_matrix(loc)
+                mat_basis = local_to_basis_matrix(mat, def_mat, parent_def_mat)
+                set_keyframe(fcurves_location, kf.frame, mat_basis.to_translation())
 
-            # roation
-            fcurves = [act.fcurves.new(data_path=path_prefix + "rotation_quaternion", index=i) for i in range(4)]
-            for fc in fcurves:
-                 fc.group = group
+            for kf in anim.rotations:
+                rot = Quaternion((kf.value.w, kf.value.x, kf.value.y, kf.value.z))
+                mat = rotation_matrix(rot)
+                mat_basis = local_to_basis_matrix(mat, def_mat, parent_def_mat)
+                set_keyframe(fcurves_rotation, kf.frame, mat_basis.to_quaternion())
 
-            if anim.rotations:
-                for kf in anim.rotations:
-                    rotation = Quaternion((kf.value.w, kf.value.x, kf.value.y, kf.value.z))
-                    set_posebone_matrix(bone, rotation_matrix(rotation))
-                    set_keyframe(fcurves, kf.frame, bone.rotation_quaternion)
-
-            else:
-                set_posebone_matrix(bone, base_mat)
-                set_keyframe(fcurves, 0, bone.rotation_quaternion)
-
-            # scale
-            fcurves = [act.fcurves.new(data_path=path_prefix + "scale", index=i) for i in range(3)]
-            for c in fcurves:
-                 c.group = group
-
-            if anim.scales:
-                for kf in anim.scales:
-                    set_keyframe(fcurves, kf.frame, kf.value.unpack())
-            else:
-                set_keyframe(fcurves, 0, base_scale)
+            for kf in anim.scales:
+                scl = Vector(kf.value.unpack())
+                mat = scale_matrix(scl)
+                mat_basis = local_to_basis_matrix(mat, def_mat, parent_def_mat)
+                set_keyframe(fcurves_scale, kf.frame, mat_basis.to_scale())
 
     return actions
 
@@ -166,7 +165,7 @@ class AniImporter:
         if not connect_armature_bones(context, arm, self.ani.bones):
             return
 
-        actions = create_actions(context, arm_obj, self.ani.bones, anim_id)
+        actions = create_actions(arm_obj, self.ani.bones, anim_id)
         for act_idx in sorted(actions):
             act = actions[act_idx]
             act.name = self.ani.names[act_idx]
@@ -174,8 +173,6 @@ class AniImporter:
 
         animation_data = arm_obj.animation_data or arm_obj.animation_data_create()
         animation_data.action = self.actions[-1]
-
-        bpy.ops.object.mode_set(mode='OBJECT')
 
         context.scene.frame_start = 0
         context.scene.frame_end = find_last_keyframe_time(animation_data.action)
@@ -209,13 +206,11 @@ class AnimImporter:
         if not connect_armature_bones(context, arm, self.anim.bones):
             return
 
-        actions = create_actions(context, arm_obj, self.anim.bones)
+        actions = create_actions(arm_obj, self.anim.bones)
         self.action = actions[0]
 
         animation_data = arm_obj.animation_data or arm_obj.animation_data_create()
         animation_data.action = self.action
-
-        bpy.ops.object.mode_set(mode='OBJECT')
 
         context.scene.frame_start = 0
         context.scene.frame_end = find_last_keyframe_time(animation_data.action)
