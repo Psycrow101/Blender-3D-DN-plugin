@@ -51,6 +51,14 @@ class Matrix3x3:
             Vector3D.read(reader),
         )
 
+    @classmethod
+    def identity(cls):
+        return cls(
+            Vector3D(1, 0, 0),
+            Vector3D(0, 1, 0),
+            Vector3D(0, 0, 1),
+        )
+
     def unpack(self) -> tuple:
         return (
             self.v1.unpack(),
@@ -73,6 +81,15 @@ class Matrix4x4:
             Vector4D.read(reader),
             Vector4D.read(reader),
             Vector4D.read(reader),
+        )
+
+    @classmethod
+    def identity(cls):
+        return cls(
+            Vector4D(1, 0, 0, 0),
+            Vector4D(0, 1, 0, 0),
+            Vector4D(0, 0, 1, 0),
+            Vector4D(0, 0, 0, 1),
         )
 
     def unpack(self) -> tuple:

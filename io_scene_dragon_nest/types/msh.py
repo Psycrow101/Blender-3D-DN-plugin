@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import List
+from typing import List, Union
 
 from .common import *
 from .reader import Reader
@@ -25,6 +25,32 @@ class Bone:
             reader.read_string(256),
             Matrix4x4.read(reader),
         )
+
+
+@dataclass
+class Dummy:
+    name: str
+    parent_name: str
+    transformation: Union[Matrix4x4, Vector3D]
+
+    @classmethod
+    def read(cls, reader: Reader, version: int):
+        if version > 12:
+            return cls(
+                reader.read_string(256),
+                reader.read_string(256),
+                Matrix4x4.read(reader),
+            )
+
+        else:
+            name = reader.read_string(256)
+            transformation = Vector3D.read(reader)
+            parent_name = reader.read_string(256) if name[0] == "L" else ""
+            return cls(
+                name,
+                parent_name,
+                transformation,
+            )
 
 
 class Mesh:
@@ -213,8 +239,7 @@ class MSH:
         self.bones = [Bone.read(reader) for _ in range(bones_num)]
         self.meshes = [Mesh.read(reader) for _ in range(meshes_num)]
         self.collisions = [Collision.read(reader, self.version) for _ in range(cols_num)]
-
-        # TODO: dummies
+        self.dummies = [Dummy.read(reader, self.version) for _ in range(dummies_num)]
 
     def load_file(self, filename: str):
         with open(filename, mode="rb") as file:
@@ -229,6 +254,7 @@ class MSH:
         self.bones: List[Bone] = []
         self.meshes: List[Mesh] = []
         self.collisions: List[Collision] = []
+        self.dummies: List[Dummy] = []
 
     def __init__(self):
         self.clear()

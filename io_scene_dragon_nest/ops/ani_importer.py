@@ -4,17 +4,10 @@ import os
 from mathutils import Quaternion, Vector, Matrix
 from typing import List
 
-from .types.ani import ANI, ANIM, AnimationBone
+from ..gui import gui
+from ..types.ani import ANI, ANIM, AnimationBone
 
 ANIM_ID_ALL = -1
-
-
-def invalid_ani_type(self, context):
-    self.layout.label(text='Invalid ani type')
-
-
-def invalid_armature(self, context):
-    self.layout.label(text='Invalid armature')
 
 
 def translation_matrix(v):
@@ -75,7 +68,7 @@ def connect_armature_bones(context, armature, animation_bones: List[AnimationBon
     for ani_bone in animation_bones:
         arm_bone = armature.edit_bones.get(ani_bone.name) or armature.edit_bones.get(ani_bone.name[:-2])
         if not arm_bone:
-            context.window_manager.popup_menu(invalid_armature, title='Error', icon='ERROR')
+            context.window_manager.popup_menu(gui.invalid_armature, title='Error', icon='ERROR')
             bpy.ops.object.mode_set(mode='OBJECT')
             return False
 
@@ -184,7 +177,7 @@ class AniImporter:
         self.ani.load_file(filename)
 
         if not self.ani.file_type.startswith("Eternity Engine Ani File"):
-            context.window_manager.popup_menu(invalid_ani_type, title='Error', icon='ERROR')
+            context.window_manager.popup_menu(gui.invalid_ani_type, title='Error', icon='ERROR')
             return False
 
         return True

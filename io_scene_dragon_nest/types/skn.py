@@ -11,7 +11,7 @@ class MatPropType(IntEnum):
     FLOAT   = 1
     VECTOR  = 2
     TEXTURE = 3
-    MATRIX  = 4
+    NONE    = 4
 
 
 @dataclass
@@ -36,6 +36,9 @@ class MaterialProperty:
 
         elif prop_type == MatPropType.TEXTURE:
             value = reader.read_string(reader.read_int())
+
+        elif prop_type == MatPropType.NONE:
+            value = None
 
         else:
             value = None
@@ -89,11 +92,13 @@ class SKN:
         self.name = reader.read_string(256)
         self.version = reader.read_int()
 
-        materials_num = reader.read_int()
+        materials_num, body_size, unk = reader.read_int(3)
 
         reader._pos = 1024
 
-        self.materials = [Material.read(reader) for _ in range(materials_num)]
+        # TODO: version 11
+        if self.version < 11:
+            self.materials = [Material.read(reader) for _ in range(materials_num)]
 
     def load_file(self, filename: str):
         with open(filename, mode="rb") as file:
