@@ -19,7 +19,6 @@ After successful import, animations will be available in the Action Editor.
 * Export support
 * Vertex color import support
 * Collisions import support
-* Dummies import support
 * SKN version 11 import support
 * Materials properties support
 
