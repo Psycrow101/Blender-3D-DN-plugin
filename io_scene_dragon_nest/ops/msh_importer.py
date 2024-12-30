@@ -7,6 +7,18 @@ from ..gui import gui
 from ..types.msh import MSH
 
 
+def set_parent_bone(obj, arm_obj, bone_name):
+    obj.parent = arm_obj
+
+    bone = arm_obj.data.bones.get(bone_name)
+    if not bone:
+        return
+
+    obj.parent_bone = bone_name
+    obj.parent_type = 'BONE'
+    obj.matrix_parent_inverse = Matrix.Translation((0, -bone.length, 0))
+
+
 class MshImporter:
 
     def import_data(self, context, options):
@@ -105,6 +117,25 @@ class MshImporter:
 
             self.mesh_objects.append(mesh_obj)
 
+        # create dummies
+        for msh_dummy in self.msh.dummies:
+            dummy_obj = bpy.data.objects.new(msh_dummy.name, None)
+            collection.objects.link(dummy_obj)
+
+            if self.msh.version > 12:
+                matrix = Matrix(msh_dummy.transformation.unpack()).transposed()
+
+            else:
+                matrix = Matrix.Translation(msh_dummy.transformation.unpack())
+
+                if dummy_obj.name[0] == "L":
+                    dummy_obj.name = dummy_obj.name[1:]
+
+            dummy_obj.matrix_local = matrix
+            set_parent_bone(dummy_obj, arm_obj, msh_dummy.parent_name)
+
+            self.dummies_objects.append(dummy_obj)
+
         for obj in view_layer.objects:
             obj.select_set(obj == arm_obj)
 
@@ -125,6 +156,7 @@ class MshImporter:
         self.msh = None
         self.armature_object = None
         self.mesh_objects = []
+        self.dummies_objects = []
         self.imported = False
 
 
