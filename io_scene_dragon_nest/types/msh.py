@@ -10,8 +10,7 @@ class CollisionType(IntEnum):
     BOX           = 0
     SPHERE        = 1
     CAPSULE       = 2
-    TRIANGLE      = 3
-    TRIANGLE_LIST = 4
+    TRIANGLE_LIST = 3
 
 
 @dataclass
@@ -118,7 +117,7 @@ class Mesh:
 
 @dataclass
 class PrimitiveBox:
-    center: Vector3D
+    location: Vector3D
     axis: Matrix3x3
     extent: Vector3D
 
@@ -133,7 +132,7 @@ class PrimitiveBox:
 
 @dataclass
 class PrimitiveSphere:
-    center: Vector3D
+    location: Vector3D
     radius: float
 
     @classmethod
@@ -147,7 +146,7 @@ class PrimitiveSphere:
 @dataclass
 class PrimitiveCapsule:
     location: Vector3D
-    direction: Vector3D
+    rotation: Vector3D
     radius: float
 
     @classmethod
@@ -178,6 +177,12 @@ class PrimitiveTriangle:
 class PrimitiveTriangleList:
     triangles: List[PrimitiveTriangle]
 
+    @classmethod
+    def read(cls, reader: Reader):
+        triangles_num = reader.read_int()
+        triangles = [PrimitiveTriangle.read(reader) for _ in range(triangles_num)]
+        return cls(triangles)
+
 
 class Collision:
 
@@ -198,14 +203,8 @@ class Collision:
         elif self.type == CollisionType.CAPSULE:
             self.primitive = PrimitiveCapsule.read(reader)
 
-        elif self.type == CollisionType.TRIANGLE:
-            num = reader.read_int()
-            self.primitive = [reader.read_float(9) for _ in range(num)]
-
         elif self.type == CollisionType.TRIANGLE_LIST:
-            triangles_num = reader.read_int()
-            triangles = [PrimitiveTriangle.read(reader) for _ in range(triangles_num)]
-            self.primitive = PrimitiveTriangleList(triangles)
+            self.primitive = PrimitiveTriangleList.read(reader)
 
         return self
 

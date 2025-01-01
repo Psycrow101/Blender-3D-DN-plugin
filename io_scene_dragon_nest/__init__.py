@@ -18,7 +18,10 @@ bl_info = {
 classes = (
     gui.DN_Import,
     gui.DN_AnimChooserBox,
+    gui.DN_CollisionObjectProps,
+    gui.DN_ObjectProps,
     gui.DN_EditBoneProps,
+    gui.OBJECT_PT_DNObjects,
 )
 
 

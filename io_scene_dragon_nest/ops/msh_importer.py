@@ -1,10 +1,11 @@
 import bpy
 import bmesh
 
+from math import radians
 from mathutils import Matrix
 
 from ..gui import gui
-from ..types.msh import MSH
+from ..types.msh import MSH, CollisionType
 
 
 def set_parent_bone(obj, arm_obj, bone_name):
@@ -51,6 +52,7 @@ class MshImporter:
             arm = bpy.data.armatures.new("Scene Root")
 
             arm_obj = bpy.data.objects.new("Scene Root", arm)
+            arm_obj.dragon_nest.type = 'OBJ'
             arm_obj.show_in_front = True
 
             if global_matrix:
@@ -99,6 +101,7 @@ class MshImporter:
             mesh.update()
 
             mesh_obj = bpy.data.objects.new(msh_mesh.name, mesh)
+            mesh_obj.dragon_nest.type = 'OBJ'
             mesh_obj.parent = arm_obj
             collection.objects.link(mesh_obj)
 
@@ -120,6 +123,7 @@ class MshImporter:
         # create dummies
         for msh_dummy in self.msh.dummies:
             dummy_obj = bpy.data.objects.new(msh_dummy.name, None)
+            dummy_obj.dragon_nest.type = 'OBJ'
             collection.objects.link(dummy_obj)
 
             if self.msh.version > 12:
@@ -134,7 +138,67 @@ class MshImporter:
             dummy_obj.matrix_local = matrix
             set_parent_bone(dummy_obj, arm_obj, msh_dummy.parent_name)
 
-            self.dummies_objects.append(dummy_obj)
+            self.dummy_objects.append(dummy_obj)
+
+        # create collisions
+        if self.msh.collisions:
+            col_collection = bpy.data.collections.new("DN Collisions")
+            collection.children.link(col_collection)
+
+            for idx, msh_collision in enumerate(self.msh.collisions):
+                if self.msh.version > 10:
+                    col_name = msh_collision.name
+                else:
+                    col_name = "Collision %d" % idx
+
+                if msh_collision.type == CollisionType.BOX:
+                    col_obj = bpy.data.objects.new(col_name, None)
+                    col_obj.location = msh_collision.primitive.location.unpack()
+                    col_obj.rotation_euler = Matrix(msh_collision.primitive.axis.unpack()).transposed().to_euler()
+                    col_obj.scale = msh_collision.primitive.extent.unpack()
+
+                elif msh_collision.type == CollisionType.SPHERE:
+                    col_obj = bpy.data.objects.new(col_name, None)
+                    col_obj.location = msh_collision.primitive.location.unpack()
+                    col_obj.scale = (msh_collision.primitive.radius,) * 3
+
+                elif msh_collision.type == CollisionType.CAPSULE:
+                    rotation = msh_collision.primitive.rotation
+
+                    col_obj = bpy.data.objects.new(col_name, None)
+                    col_obj.location = msh_collision.primitive.location.unpack()
+                    col_obj.rotation_euler = (radians(rotation.x), radians(rotation.y), radians(rotation.z))
+                    col_obj.scale = (msh_collision.primitive.radius,) * 3
+
+                elif msh_collision.type == CollisionType.TRIANGLE_LIST:
+                    vertices, faces = [], []
+                    vertex_idx = 0
+
+                    for triangle in msh_collision.primitive.triangles:
+                        v1 = triangle.location.unpack()
+                        v2 = (v1[0] + triangle.edge_a.x, v1[1] + triangle.edge_a.y, v1[2] + triangle.edge_a.z)
+                        v3 = (v1[0] + triangle.edge_b.x, v1[1] + triangle.edge_b.y, v1[2] + triangle.edge_b.z)
+                        vertices.extend((v1, v2, v3))
+                        faces.append((vertex_idx, vertex_idx + 1, vertex_idx + 2))
+                        vertex_idx += 3
+
+                    col_data = bpy.data.meshes.new(col_name)
+                    col_data.from_pydata(vertices, [], faces)
+
+                    col_obj = bpy.data.objects.new(col_name, col_data)
+
+                else:
+                    col_obj = bpy.data.objects.new(col_name, None)
+
+                col_obj.dragon_nest.type = 'COL'
+                col_obj.dragon_nest.collision.type = str(msh_collision.type)
+                col_obj.parent = arm_obj
+                col_collection.objects.link(col_obj)
+
+                self.collision_objects.append(col_obj)
+
+            view_collection = context.view_layer.layer_collection.children[col_collection.name]
+            view_collection.exclude = True
 
         for obj in view_layer.objects:
             obj.select_set(obj == arm_obj)
@@ -156,7 +220,8 @@ class MshImporter:
         self.msh = None
         self.armature_object = None
         self.mesh_objects = []
-        self.dummies_objects = []
+        self.dummy_objects = []
+        self.collision_objects = []
         self.imported = False
 
 
