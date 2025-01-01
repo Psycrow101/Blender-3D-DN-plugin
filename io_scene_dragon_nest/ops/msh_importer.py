@@ -194,11 +194,9 @@ class MshImporter:
                 col_obj.dragon_nest.collision.type = str(msh_collision.type)
                 col_obj.parent = arm_obj
                 col_collection.objects.link(col_obj)
+                col_obj.hide_set(True)
 
                 self.collision_objects.append(col_obj)
-
-            view_collection = context.view_layer.layer_collection.children[col_collection.name]
-            view_collection.exclude = True
 
         for obj in view_layer.objects:
             obj.select_set(obj == arm_obj)
