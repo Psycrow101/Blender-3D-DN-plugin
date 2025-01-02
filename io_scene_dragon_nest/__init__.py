@@ -20,8 +20,10 @@ classes = (
     gui.DN_AnimChooserBox,
     gui.DN_CollisionObjectProps,
     gui.DN_ObjectProps,
+    gui.DN_MaterialProps,
     gui.DN_EditBoneProps,
     gui.OBJECT_PT_DNObjects,
+    gui.MATERIAL_PT_DNMaterials,
 )
 
 

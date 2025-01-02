@@ -34,20 +34,54 @@ class SknImporter:
             if not material:
                 material = bpy.data.materials.new(name=skn_mat.name)
                 mat_wrap = node_shader_utils.PrincipledBSDFWrapper(material, is_readonly=False)
+                mat_wrap.roughness = 1.0
+
+                material.dragon_nest.effect = skn_mat.effect
+                material.dragon_nest.alpha_value = skn_mat.alpha
+                material.dragon_nest.enable_alpha_blend = skn_mat.alpha_blend
 
                 for prop in skn_mat.properties:
                     if prop.type == MatPropType.TEXTURE:
                         texture = bpy.data.textures.get(prop.value) or bpy.data.textures.new(prop.value, type='IMAGE')
                         texture.image = bpy.data.images.get(prop.value) or load_image(prop.value, options['directory'])
 
-                        if prop.name == "g_DiffuseTex":
-                            nodetex = mat_wrap.base_color_texture
-                            nodetex.image = texture.image
-                            nodetex.texcoords = 'UV'
+                    if prop.name == "g_MaterialAmbient":
+                        material.dragon_nest.enable_colors = True
+                        material.dragon_nest.material_ambient = prop.value.unpack()
 
-                            if texture.image and texture.image.depth in {32, 128}:
+                    elif prop.name == "g_MaterialDiffuse":
+                        material.dragon_nest.material_diffuse = prop.value.unpack()
+
+                    elif prop.name == "g_EmissivePower":
+                        material.dragon_nest.emissive_power = prop.value
+
+                    elif prop.name == "g_EmissivePowerRange":
+                        material.dragon_nest.emissive_power_range = prop.value
+
+                    elif prop.name == "g_EmissiveAniSpeed":
+                        material.dragon_nest.emissive_ani_speed = prop.value
+
+                    elif prop.name == "g_DiffuseTex":
+                        material.dragon_nest.diffuse_texture = prop.value
+
+                        node_texture = mat_wrap.base_color_texture
+                        node_texture.image = texture.image
+                        node_texture.texcoords = 'UV'
+
                                 material.blend_method = 'HASHED'
                                 add_transparent_node(material.node_tree)
+
+                    elif prop.name == "g_EmissiveTex":
+                        material.dragon_nest.emissive_texture = prop.value
+
+                        node_emission_texture = mat_wrap.emission_color_texture
+                        node_emission_texture.image = texture.image
+                        node_emission_texture.texcoords = 'UV'
+
+                        mat_wrap.emission_strength = 1.0
+
+                    elif prop.name == "g_MaskTex":
+                        material.dragon_nest.mask_texture = prop.value
 
             self.materials.append(material)
 
