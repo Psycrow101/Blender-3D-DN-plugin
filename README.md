@@ -18,9 +18,6 @@ After successful import, animations will be available in the Action Editor.
 ## TODO:
 * Export support
 * Vertex color import support
-* Collisions import support
-* SKN version 11 import support
-* Materials properties support
 
 ## Requirements
 * Blender (2.80 and above)
