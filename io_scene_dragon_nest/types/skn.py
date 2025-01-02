@@ -92,13 +92,36 @@ class SKN:
         self.name = reader.read_string(256)
         self.version = reader.read_int()
 
-        materials_num, body_size, unk = reader.read_int(3)
+        materials_num, body_size, fragments_order = reader.read_int(3)
 
         reader._pos = 1024
 
-        # TODO: version 11
         if self.version < 11:
             self.materials = [Material.read(reader) for _ in range(materials_num)]
+
+        else:
+            fragments_indices = {
+                0: (2, 3, 0, 4, 1),
+                1: (1, 0, 4, 2, 3),
+                2: (4, 3, 0, 1, 2),
+                3: (3, 2, 1, 4, 0),
+                4: (3, 2, 4, 0, 1),
+            }[fragments_order]
+
+            fragment_size = body_size // 5 // 2 * 2
+            last_fragment_size = body_size - (fragment_size * 4)
+
+            fragments = []
+            for i in fragments_indices:
+                size = last_fragment_size if i == 4 else fragment_size
+                fragments.append(reader.read_bytes(size))
+
+            body = b''
+            for idx in sorted(range(len(fragments_indices)), key=lambda i: fragments_indices[i]):
+                body += fragments[idx]
+
+            body_reader = Reader(body)
+            self.materials = [Material.read(body_reader) for _ in range(materials_num)]
 
     def load_file(self, filename: str):
         with open(filename, mode="rb") as file:
