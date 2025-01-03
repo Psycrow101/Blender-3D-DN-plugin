@@ -26,6 +26,13 @@ classes = (
     gui.MATERIAL_PT_DNMaterials,
 )
 
+_draw_3d_handler = None
+
+
+def draw_3d_callback():
+    context = bpy.context
+    gui.DN_ObjectProps.draw_bbox(context)
+
 
 def register():
     for cls in classes:
@@ -33,9 +40,14 @@ def register():
 
     bpy.types.TOPBAR_MT_file_import.append(gui.menu_func_import)
 
+    global _draw_3d_handler
+    _draw_3d_handler = bpy.types.SpaceView3D.draw_handler_add(draw_3d_callback, (), 'WINDOW', 'POST_VIEW')
+
 
 def unregister():
     bpy.types.TOPBAR_MT_file_import.remove(gui.menu_func_import)
+
+    bpy.types.SpaceView3D.draw_handler_remove(_draw_3d_handler, 'WINDOW')
 
     for cls in classes:
         bpy.utils.unregister_class(cls)

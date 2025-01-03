@@ -1,4 +1,17 @@
 import bpy
+import gpu
+
+from gpu_extras.batch import batch_for_shader
+from mathutils import Matrix
+
+BOX_INDICES = (
+    (0, 1), (1, 3), (3, 2), (2, 0),
+    (2, 3), (3, 7), (7, 6), (6, 2),
+    (6, 7), (7, 5), (5, 4), (4, 6),
+    (4, 5), (5, 1), (1, 0), (0, 4),
+    (2, 6), (6, 4), (4, 0), (0, 2),
+    (7, 3), (3, 1), (1, 5), (5, 7),
+)
 
 
 class DN_CollisionObjectProps(bpy.types.PropertyGroup):
@@ -31,10 +44,55 @@ class DN_ObjectProps(bpy.types.PropertyGroup):
         items = (
             ('OBJ', 'Object', 'Object is a mesh, scene root or dummy'),
             ('COL', 'Collision Object', 'Object is a collision object'),
+            ('NONE', 'None', 'Do not export object'),
         )
     )
 
     collision: bpy.props.PointerProperty(type=DN_CollisionObjectProps)
+
+    show_bbox: bpy.props.BoolProperty(
+        name = "Show BBox"
+    )
+
+    bbox_min: bpy.props.FloatVectorProperty(
+        name = "BBox Min",
+        size = 3,
+        default = [-1.0, -1.0, -1.0]
+    )
+
+    bbox_max: bpy.props.FloatVectorProperty(
+        name = "BBox Max",
+        size = 3,
+        default = [1.0, 1.0, 1.0]
+    )
+
+    def draw_bbox(context):
+        obj = context.object
+        if not obj:
+            return
+
+        settings = obj.dragon_nest
+        if settings.type == 'OBJ' and obj.type == 'ARMATURE' and settings.show_bbox:
+            matrix_world = obj.matrix_world
+            bbox_min = settings.bbox_min
+            bbox_max = settings.bbox_max
+
+            coords = (
+                (matrix_world @ Matrix.Translation((bbox_min[0], bbox_min[1], bbox_min[2]))).to_translation(),
+                (matrix_world @ Matrix.Translation((bbox_min[0], bbox_min[1], bbox_max[2]))).to_translation(),
+                (matrix_world @ Matrix.Translation((bbox_min[0], bbox_max[1], bbox_min[2]))).to_translation(),
+                (matrix_world @ Matrix.Translation((bbox_min[0], bbox_max[1], bbox_max[2]))).to_translation(),
+                (matrix_world @ Matrix.Translation((bbox_max[0], bbox_min[1], bbox_min[2]))).to_translation(),
+                (matrix_world @ Matrix.Translation((bbox_max[0], bbox_min[1], bbox_max[2]))).to_translation(),
+                (matrix_world @ Matrix.Translation((bbox_max[0], bbox_max[1], bbox_min[2]))).to_translation(),
+                (matrix_world @ Matrix.Translation((bbox_max[0], bbox_max[1], bbox_max[2]))).to_translation(),
+            )
+
+            shader = gpu.shader.from_builtin('UNIFORM_COLOR')
+            batch = batch_for_shader(shader, 'LINES', {"pos": coords}, indices=BOX_INDICES)
+
+            shader.uniform_float("color", (1, 1, 0, 1))
+            batch.draw(shader)
 
     def register():
         bpy.types.Object.dragon_nest = bpy.props.PointerProperty(type=DN_ObjectProps)

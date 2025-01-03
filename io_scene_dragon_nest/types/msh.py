@@ -35,16 +35,19 @@ class Dummy:
     @classmethod
     def read(cls, reader: Reader, version: int):
         if version > 12:
-            return cls(
-                reader.read_string(256),
-                reader.read_string(256),
-                Matrix4x4.read(reader),
-            )
+            name = reader.read_string(256)
+            parent_name = reader.read_string(256)
+            transformation = Matrix4x4.read(reader)
 
         else:
             name = reader.read_string(256)
+            parent_name = ""
             transformation = Vector3D.read(reader)
-            parent_name = reader.read_string(256) if name[0] == "L" else ""
+
+            if name[0] == "L":
+                name = name[1:]
+                parent_name = reader.read_string(256)
+
             return cls(
                 name,
                 parent_name,
@@ -63,12 +66,12 @@ class Mesh:
         self.name = reader.read_string(256)
 
         verts_num, indices_num, uvs_num = reader.read_int(3)
-        use_tristrip, use_rig, use_vert_color, _ = reader.read_bytes(4)
+        self.use_tristrip, use_rig, use_vert_color, _ = reader.read_bytes(4)
 
         reader.read_bytes(512 - 16)
 
         # faces
-        if use_tristrip:
+        if self.use_tristrip:
             v1, v2 = reader.read_short(2)
             direct = -1
             for _ in range(indices_num - 2):
@@ -92,7 +95,7 @@ class Mesh:
         if use_vert_color:
             self.vertex_colors = [reader.read_float() for _ in range(verts_num)]
 
-        # skin
+        # rig
         if use_rig:
             self.rig_indices = [reader.read_short(4) for _ in range(verts_num)]
             self.rig_weights = [reader.read_float(4) for _ in range(verts_num)]
@@ -105,6 +108,7 @@ class Mesh:
     def __init__(self):
         self.parent_name = ""
         self.name = ""
+        self.use_tristrip = False
         self.faces = []
         self.vertices = []
         self.normals = []

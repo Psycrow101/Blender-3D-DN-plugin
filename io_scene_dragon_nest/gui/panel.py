@@ -15,8 +15,28 @@ class OBJECT_PT_DNObjects(bpy.types.Panel):
 
         layout.prop(settings, "type", text="Type")
 
-        if settings.type == 'COL':
+        if settings.type == 'OBJ':
+            if context.object.type == 'ARMATURE':
+                self.draw_arm_menu(context)
+            elif context.object.type == 'MESH':
+                self.draw_mesh_menu(context)
+
+        elif settings.type == 'COL':
             self.draw_col_menu(context)
+
+    def draw_arm_menu(self, context):
+        layout = self.layout
+        settings = context.object.dragon_nest
+
+        box = layout.box()
+        box.label(text="Model")
+
+        box.prop(settings, "show_bbox")
+        box.prop(settings, "bbox_min")
+        box.prop(settings, "bbox_max")
+
+    def draw_mesh_menu(self, context):
+        pass
 
     def draw_col_menu(self, context):
         layout = self.layout

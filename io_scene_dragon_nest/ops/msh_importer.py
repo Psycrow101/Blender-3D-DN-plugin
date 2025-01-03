@@ -53,6 +53,8 @@ class MshImporter:
 
             arm_obj = bpy.data.objects.new("Scene Root", arm)
             arm_obj.dragon_nest.type = 'OBJ'
+            arm_obj.dragon_nest.bbox_min = self.msh.bb_min.unpack()
+            arm_obj.dragon_nest.bbox_max = self.msh.bb_max.unpack()
             arm_obj.show_in_front = True
 
             if global_matrix:
@@ -128,12 +130,8 @@ class MshImporter:
 
             if self.msh.version > 12:
                 matrix = Matrix(msh_dummy.transformation.unpack()).transposed()
-
             else:
                 matrix = Matrix.Translation(msh_dummy.transformation.unpack())
-
-                if dummy_obj.name[0] == "L":
-                    dummy_obj.name = dummy_obj.name[1:]
 
             dummy_obj.matrix_local = matrix
             set_parent_bone(dummy_obj, arm_obj, msh_dummy.parent_name)
