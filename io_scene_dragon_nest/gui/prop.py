@@ -39,6 +39,30 @@ class DN_CollisionObjectProps(bpy.types.PropertyGroup):
 
 class DN_ObjectProps(bpy.types.PropertyGroup):
 
+    def parent_name_changed(self, context):
+        obj = self.id_data
+        settings = obj.dragon_nest
+
+        arm_obj = obj.parent
+        if not arm_obj or arm_obj.type != 'ARMATURE':
+            return
+
+        if obj.type == 'EMPTY':
+            bone = arm_obj.data.bones.get(settings.parent_name)
+            if bone:
+                obj.parent_bone = bone.name
+                obj.parent_type = 'BONE'
+                obj.matrix_parent_inverse = Matrix.Translation((0, -bone.length, 0))
+
+    def parent_name_search_func(props, context, edit_text):
+        names = ["Scene Root"]
+
+        arm_obj = context.object.parent
+        if arm_obj and arm_obj.type == 'ARMATURE':
+            names += [bone.name for bone in arm_obj.data.bones]
+
+        return names
+
     type: bpy.props.EnumProperty(
         name = "Type",
         items = (
@@ -47,6 +71,19 @@ class DN_ObjectProps(bpy.types.PropertyGroup):
             ('NONE', 'None', 'Do not export object'),
         )
     )
+
+     # NOTE: bpy.props.StringProperty supports a search argument since version 3.3
+    if bpy.app.version < (3, 3, 0):
+        parent_name: bpy.props.StringProperty(
+            name = "Parent Name",
+            update = parent_name_changed
+        )
+    else:
+        parent_name: bpy.props.StringProperty(
+            name = "Parent Name",
+            update = parent_name_changed,
+            search = parent_name_search_func
+        )
 
     collision: bpy.props.PointerProperty(type=DN_CollisionObjectProps)
 

@@ -20,6 +20,8 @@ class OBJECT_PT_DNObjects(bpy.types.Panel):
                 self.draw_arm_menu(context)
             elif context.object.type == 'MESH':
                 self.draw_mesh_menu(context)
+            elif context.object.type == 'EMPTY':
+                self.draw_empty_menu(context)
 
         elif settings.type == 'COL':
             self.draw_col_menu(context)
@@ -36,7 +38,22 @@ class OBJECT_PT_DNObjects(bpy.types.Panel):
         box.prop(settings, "bbox_max")
 
     def draw_mesh_menu(self, context):
-        pass
+        layout = self.layout
+        settings = context.object.dragon_nest
+
+        box = layout.box()
+        box.label(text="Mesh")
+
+        box.prop(settings, "parent_name", text="Parent")
+
+    def draw_empty_menu(self, context):
+        layout = self.layout
+        settings = context.object.dragon_nest
+
+        box = layout.box()
+        box.label(text="Dummy")
+
+        box.prop(settings, "parent_name", text="Parent")
 
     def draw_col_menu(self, context):
         layout = self.layout

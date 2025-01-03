@@ -8,18 +8,6 @@ from ..gui import gui
 from ..types.msh import MSH, CollisionType
 
 
-def set_parent_bone(obj, arm_obj, bone_name):
-    obj.parent = arm_obj
-
-    bone = arm_obj.data.bones.get(bone_name)
-    if not bone:
-        return
-
-    obj.parent_bone = bone_name
-    obj.parent_type = 'BONE'
-    obj.matrix_parent_inverse = Matrix.Translation((0, -bone.length, 0))
-
-
 class MshImporter:
 
     def import_data(self, context, options):
@@ -104,6 +92,7 @@ class MshImporter:
 
             mesh_obj = bpy.data.objects.new(msh_mesh.name, mesh)
             mesh_obj.dragon_nest.type = 'OBJ'
+            mesh_obj.dragon_nest.parent_name = msh_mesh.parent_name
             mesh_obj.parent = arm_obj
             collection.objects.link(mesh_obj)
 
@@ -134,7 +123,8 @@ class MshImporter:
                 matrix = Matrix.Translation(msh_dummy.transformation.unpack())
 
             dummy_obj.matrix_local = matrix
-            set_parent_bone(dummy_obj, arm_obj, msh_dummy.parent_name)
+            dummy_obj.parent = arm_obj
+            dummy_obj.dragon_nest.parent_name = msh_dummy.parent_name
 
             self.dummy_objects.append(dummy_obj)
 
