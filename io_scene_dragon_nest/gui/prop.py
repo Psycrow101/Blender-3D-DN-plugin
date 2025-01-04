@@ -13,6 +13,32 @@ BOX_INDICES = (
     (7, 3), (3, 1), (1, 5), (5, 7),
 )
 
+EFFECT_NAMES = (
+    'BG_Diffuse.fx', 'BG_DiffuseEmissive.fx', 'BG_DiffuseEmissiveSphericalMap.fx',
+    'BG_DiffuseSpecSphericalMap.fx', 'BG_DiffuseSpecSphericalNormalScroll.fx',
+    'BG_DiffuseSpecSphericalScroll.fx', 'BG_DiffuseSphericalMap.fx',
+    'BG_Diffuse_IceBlending.fx', 'BG_Diffuse_SnowBlending.fx',
+    'BG_EmissiveNormalScroll.fx', 'BG_Foliage.fx', 'BG_Hologram.fx',
+    'BG_NormalSpecular.fx', 'BG_Tree.fx', 'BG_WaterObject.fx', 'CellularRim.fx',
+    'DNToonEmissiveRim.fx', 'Default.fx', 'Diffuse.fx', 'DiffuseAvatar.fx',
+    'DiffuseAvatarFace.fx', 'DiffuseAvatarFaceTatoo.fx',
+    'DiffuseAvatarFaceTatoo_Head.fx', 'DiffuseCustomColor.fx',
+    'DiffuseCustomColor_Hair.fx', 'DiffuseDistance.fx', 'DiffuseEmissive.fx',
+    'DiffuseEmissiveCustomColor.fx', 'DiffuseEmissiveGhostFire.fx',
+    'DiffuseEmissiveRim.fx', 'DiffuseEmissiveSphericalMap.fx',
+    'DiffuseEmissiveSphericalMapParts.fx', 'DiffuseEmissiveSphericalMapSSD.fx',
+    'DiffuseEmissiveSphericalMapSSDM.fx', 'DiffuseEmissiveUVScroll.fx',
+    'DiffuseEmissiveUVScrollRim.fx', 'DiffuseEmissiveVolumeTex.fx',
+    'DiffuseRimCloud.fx', 'DiffuseSpecularAvatar.fx', 'DiffuseSphericalMap.fx',
+    'DiffuseUVScroll.fx', 'DiffuseUVScrollTiling.fx', 'DiffuseUVScrollTilingRim.fx',
+    'DiffuseVolumeTex.fx', 'DiffuseVolumeTexHologram.fx', 'Flat.fx',
+    'FlatUVScroll.fx', 'FlatUVScrollTiling.fx', 'Hologram.fx', 'LimLight.fx',
+    'NormalEmissiveSpecular.fx', 'NormalEmissiveSpecularSphericalMapRim.fx',
+    'NormalIridescent.fx', 'NormalSpecularReflect.fx', 'RimUVScroll.fx',
+    'SkyBox.fx', 'SkyBoxAni.fx', 'SkyBoxAurora.fx', 'SkyBoxCloud.fx',
+    'StandardFX11.fx', 'TextureSheetAnimation.fx'
+)
+
 
 class DN_CollisionObjectProps(bpy.types.PropertyGroup):
 
@@ -169,13 +195,11 @@ class DN_MaterialProps(bpy.types.PropertyGroup):
             if bsdf_node:
                 bsdf_node.inputs['Base Color'].default_value = settings.material_diffuse
 
+    def effect_search_func(props, context, edit_text):
+        return EFFECT_NAMES
+
     def texture_search_func(props, context, edit_text):
         return [img.name for img in bpy.data.images]
-
-    effect: bpy.props.StringProperty(
-        name = "Effect",
-        default = "Diffuse.fx"
-    )
 
     alpha_value: bpy.props.FloatProperty(
         name = "Alpha Value",
@@ -223,6 +247,11 @@ class DN_MaterialProps(bpy.types.PropertyGroup):
 
     # NOTE: bpy.props.StringProperty supports a search argument since version 3.3
     if bpy.app.version < (3, 3, 0):
+        effect: bpy.props.StringProperty(
+            name = "Effect",
+            default = "Diffuse.fx"
+        )
+
         diffuse_texture: bpy.props.StringProperty(
             name = "Diffuse Texture"
         )
@@ -235,6 +264,12 @@ class DN_MaterialProps(bpy.types.PropertyGroup):
             name = "Mask Texture"
         )
     else:
+        effect: bpy.props.StringProperty(
+            name = "Effect",
+            default = "Diffuse.fx",
+            search = effect_search_func
+        )
+
         diffuse_texture: bpy.props.StringProperty(
             name = "Diffuse Texture",
             search = texture_search_func
@@ -258,7 +293,7 @@ class DN_BoneProps(bpy.types.PropertyGroup):
 
     scale: bpy.props.FloatVectorProperty(
         size = 3,
-        default = (0.0, 0.0, 0.0),
+        default = (1.0, 1.0, 1.0),
     )
 
     def register():
