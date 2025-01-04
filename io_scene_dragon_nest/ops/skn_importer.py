@@ -39,6 +39,7 @@ class SknImporter:
                 material.dragon_nest.effect = skn_mat.effect
                 material.dragon_nest.alpha_value = skn_mat.alpha
                 material.dragon_nest.enable_alpha_blend = skn_mat.alpha_blend
+                material.dragon_nest.enable_colors = False
 
                 for prop in skn_mat.properties:
                     if prop.type == MatPropType.TEXTURE:

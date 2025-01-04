@@ -50,9 +50,17 @@ class DN_ObjectProps(bpy.types.PropertyGroup):
         if obj.type == 'EMPTY':
             bone = arm_obj.data.bones.get(settings.parent_name)
             if bone:
+                scale_matrix = Matrix.Identity(4)
+                scale_matrix[0][0] = bone.dragon_nest.scale[0]
+                scale_matrix[1][1] = bone.dragon_nest.scale[1]
+                scale_matrix[2][2] = bone.dragon_nest.scale[2]
+
                 obj.parent_bone = bone.name
                 obj.parent_type = 'BONE'
-                obj.matrix_parent_inverse = Matrix.Translation((0, -bone.length, 0))
+                obj.matrix_parent_inverse = scale_matrix @ Matrix.Translation((0, -bone.length, 0))
+            else:
+                obj.parent_type = 'OBJECT'
+                obj.matrix_parent_inverse = Matrix.Identity(4)
 
     def parent_name_search_func(props, context, edit_text):
         names = ["Scene Root"]
@@ -72,7 +80,7 @@ class DN_ObjectProps(bpy.types.PropertyGroup):
         )
     )
 
-     # NOTE: bpy.props.StringProperty supports a search argument since version 3.3
+    # NOTE: bpy.props.StringProperty supports a search argument since version 3.3
     if bpy.app.version < (3, 3, 0):
         parent_name: bpy.props.StringProperty(
             name = "Parent Name",
@@ -101,6 +109,12 @@ class DN_ObjectProps(bpy.types.PropertyGroup):
         name = "BBox Max",
         size = 3,
         default = [1.0, 1.0, 1.0]
+    )
+
+    use_tristrip: bpy.props.BoolProperty(
+        name = "Use Triangle Strip",
+        description="Use Triangle Strip instead of Triangle List",
+        default = True
     )
 
     def draw_bbox(context):
@@ -155,6 +169,9 @@ class DN_MaterialProps(bpy.types.PropertyGroup):
             if bsdf_node:
                 bsdf_node.inputs['Base Color'].default_value = settings.material_diffuse
 
+    def texture_search_func(props, context, edit_text):
+        return [img.name for img in bpy.data.images]
+
     effect: bpy.props.StringProperty(
         name = "Effect",
         default = "Diffuse.fx"
@@ -173,7 +190,8 @@ class DN_MaterialProps(bpy.types.PropertyGroup):
     )
 
     enable_colors: bpy.props.BoolProperty(
-        name = "Enable Colors"
+        name = "Enable Colors",
+        default = True
     )
 
     material_diffuse: bpy.props.FloatVectorProperty(
@@ -203,23 +221,40 @@ class DN_MaterialProps(bpy.types.PropertyGroup):
         name = "Emissive Animation Speed"
     )
 
-    diffuse_texture: bpy.props.StringProperty(
-        name = "Diffuse Texture"
-    )
+    # NOTE: bpy.props.StringProperty supports a search argument since version 3.3
+    if bpy.app.version < (3, 3, 0):
+        diffuse_texture: bpy.props.StringProperty(
+            name = "Diffuse Texture"
+        )
 
-    emissive_texture: bpy.props.StringProperty(
-        name = "Emissive Texture"
-    )
+        emissive_texture: bpy.props.StringProperty(
+            name = "Emissive Texture"
+        )
 
-    mask_texture: bpy.props.StringProperty(
-        name = "Mask Texture"
-    )
+        mask_texture: bpy.props.StringProperty(
+            name = "Mask Texture"
+        )
+    else:
+        diffuse_texture: bpy.props.StringProperty(
+            name = "Diffuse Texture",
+            search = texture_search_func
+        )
+
+        emissive_texture: bpy.props.StringProperty(
+            name = "Emissive Texture",
+            search = texture_search_func
+        )
+
+        mask_texture: bpy.props.StringProperty(
+            name = "Mask Texture",
+            search = texture_search_func
+        )
 
     def register():
         bpy.types.Material.dragon_nest = bpy.props.PointerProperty(type=DN_MaterialProps)
 
 
-class DN_EditBoneProps(bpy.types.PropertyGroup):
+class DN_BoneProps(bpy.types.PropertyGroup):
 
     scale: bpy.props.FloatVectorProperty(
         size = 3,
@@ -227,4 +262,4 @@ class DN_EditBoneProps(bpy.types.PropertyGroup):
     )
 
     def register():
-        bpy.types.EditBone.dragon_nest = bpy.props.PointerProperty(type=DN_EditBoneProps)
+        bpy.types.Bone.dragon_nest = bpy.props.PointerProperty(type=DN_BoneProps)

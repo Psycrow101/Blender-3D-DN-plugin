@@ -45,6 +45,7 @@ class OBJECT_PT_DNObjects(bpy.types.Panel):
         box.label(text="Mesh")
 
         box.prop(settings, "parent_name", text="Parent")
+        box.prop(settings, "use_tristrip", text="Use Triangle Strip")
 
     def draw_empty_menu(self, context):
         layout = self.layout

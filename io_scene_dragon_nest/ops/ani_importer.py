@@ -48,13 +48,9 @@ def get_active_armature(context):
 
 
 def get_armature_matrices(armature_object):
-    bpy.ops.object.mode_set(mode='EDIT')
-
     matrices = {}
-    for bone in armature_object.data.edit_bones:
-        matrices[bone.name] = bone.matrix @ scale_matrix(bone.dragon_nest.scale)
-
-    bpy.ops.object.mode_set(mode='OBJECT')
+    for bone in armature_object.data.bones:
+        matrices[bone.name] = bone.matrix_local @ scale_matrix(bone.dragon_nest.scale)
     return matrices
 
 

@@ -21,7 +21,7 @@ classes = (
     gui.DN_CollisionObjectProps,
     gui.DN_ObjectProps,
     gui.DN_MaterialProps,
-    gui.DN_EditBoneProps,
+    gui.DN_BoneProps,
     gui.OBJECT_PT_DNObjects,
     gui.MATERIAL_PT_DNMaterials,
 )

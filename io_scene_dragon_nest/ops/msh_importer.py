@@ -21,9 +21,10 @@ class MshImporter:
             arm_obj = append_armature
             arm = arm_obj.data
 
-            bpy.ops.object.mode_set(mode='EDIT')
+            bone_matrices = {}
 
             # create bones
+            bpy.ops.object.mode_set(mode='EDIT')
             for msh_bone in self.msh.bones:
                 if arm.edit_bones.get(msh_bone.name):
                     continue
@@ -34,7 +35,13 @@ class MshImporter:
                 bone.head = (0, 0, 0)
                 bone.tail = (0, 0, 1)
                 bone.matrix = mat
-                bone.dragon_nest.scale = mat.to_scale()
+
+                bone_matrices[bone.name] = mat
+
+            # apply custom scale
+            bpy.ops.object.mode_set(mode='OBJECT')
+            for bone_name, mat in bone_matrices.items():
+                arm.bones[bone_name].dragon_nest.scale = mat.to_scale()
 
         else:
             arm = bpy.data.armatures.new("Scene Root")
@@ -51,9 +58,10 @@ class MshImporter:
             collection.objects.link(arm_obj)
             view_layer.objects.active = arm_obj
 
-            bpy.ops.object.mode_set(mode='EDIT')
+            bone_matrices = {}
 
             # create bones
+            bpy.ops.object.mode_set(mode='EDIT')
             for msh_bone in self.msh.bones:
                 mat = Matrix(msh_bone.matrix.unpack()).transposed().inverted_safe()
 
@@ -61,11 +69,16 @@ class MshImporter:
                 bone.head = (0, 0, 0)
                 bone.tail = (0, 0, 1)
                 bone.matrix = mat
-                bone.dragon_nest.scale = mat.to_scale()
+
+                bone_matrices[bone.name] = mat
+
+            # apply custom scale
+            bpy.ops.object.mode_set(mode='OBJECT')
+            for bone_name, mat in bone_matrices.items():
+                arm.bones[bone_name].dragon_nest.scale = mat.to_scale()
 
         # create meshes
         for msh_mesh in self.msh.meshes:
-            bpy.ops.object.mode_set(mode='OBJECT')
             mesh = bpy.data.meshes.new(msh_mesh.name)
 
             mesh.from_pydata(msh_mesh.vertices, [], msh_mesh.faces)
@@ -93,6 +106,7 @@ class MshImporter:
             mesh_obj = bpy.data.objects.new(msh_mesh.name, mesh)
             mesh_obj.dragon_nest.type = 'OBJ'
             mesh_obj.dragon_nest.parent_name = msh_mesh.parent_name
+            mesh_obj.dragon_nest.use_tristrip = msh_mesh.use_tristrip
             mesh_obj.parent = arm_obj
             collection.objects.link(mesh_obj)
 
