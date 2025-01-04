@@ -156,13 +156,15 @@ class DN_MaterialProps(bpy.types.PropertyGroup):
                 bsdf_node.inputs['Base Color'].default_value = settings.material_diffuse
 
     effect: bpy.props.StringProperty(
-        name = "Effect"
+        name = "Effect",
+        default = "Diffuse.fx"
     )
 
     alpha_value: bpy.props.FloatProperty(
         name = "Alpha Value",
         min = 0,
         max = 1,
+        default = 1,
         update = alpha_value_changed
     )
 
