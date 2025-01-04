@@ -3,7 +3,9 @@ from enum import IntEnum
 from typing import List, Union
 
 from .common import *
+from .pyffi.utils import tristrip
 from .reader import Reader
+from .writer import Writer
 
 
 class CollisionType(IntEnum):
@@ -24,6 +26,10 @@ class Bone:
             reader.read_string(256),
             Matrix4x4.read(reader),
         )
+
+    def write(self, writer: Writer):
+        writer.write_string(self.name, 256)
+        self.matrix.write(writer)
 
 
 @dataclass
@@ -48,11 +54,26 @@ class Dummy:
                 name = name[1:]
                 parent_name = reader.read_string(256)
 
-            return cls(
-                name,
-                parent_name,
-                transformation,
-            )
+        return cls(
+            name,
+            parent_name,
+            transformation,
+        )
+
+    def write(self, writer: Writer, version: int):
+        if version > 12:
+            writer.write_string(self.name, 256)
+            writer.write_string(self.parent_name, 256)
+            self.transformation.write(writer)
+
+        else:
+            if self.parent_name:
+                writer.write_string("L" + self.name, 256)
+                self.transformation.write(writer)
+                writer.write_string(self.parent_name, 256)
+            else:
+                writer.write_string(self.name, 256)
+                self.transformation.write(writer)
 
 
 class Mesh:
@@ -105,6 +126,61 @@ class Mesh:
 
         return self
 
+    def write(self, writer: Writer):
+        writer.write_string(self.parent_name, 256)
+        writer.write_string(self.name, 256)
+
+        use_tristrip = self.use_tristrip
+        use_rig = len(self.rig_indices) > 0
+        use_vert_color = len(self.vertex_colors) > 0
+
+        if use_tristrip:
+            indices = tristrip.stripify(self.faces, True)[0]
+        else:
+            indices = []
+            for f in self.faces:
+                indices += f
+
+        verts_num = len(self.vertices)
+        indices_num = len(indices)
+        uvs_num = len(self.uvs)
+
+        writer.write_int((verts_num, indices_num, uvs_num))
+        writer.write_int8((use_tristrip, use_rig, use_vert_color, 0))
+        writer.write_bytes(b'\0' * (512 - 16))
+
+        # faces
+        writer.write_ushort(indices)
+
+        # vertices
+        for vec in self.vertices:
+            writer.write_float(vec)
+
+        # normals
+        for vec in self.normals:
+            writer.write_float(vec)
+
+        # uvs
+        for uv in self.uvs:
+            for vec in uv:
+                writer.write_float(vec)
+
+        # vertex colors
+        if use_vert_color:
+            writer.write_float(self.vertex_colors)
+
+        # rig
+        if use_rig:
+            for vec in self.rig_indices:
+                writer.write_short(vec)
+
+            for vec in self.rig_weights:
+                writer.write_float(vec)
+
+            writer.write_int(len(self.rig_names))
+            for rig_name in self.rig_names:
+                writer.write_string(rig_name, 256)
+
     def __init__(self):
         self.parent_name = ""
         self.name = ""
@@ -133,6 +209,11 @@ class PrimitiveBox:
             Vector3D.read(reader),
         )
 
+    def write(self, writer: Writer):
+        self.location.write(writer)
+        self.axis.write(writer)
+        self.extent.write(writer)
+
 
 @dataclass
 class PrimitiveSphere:
@@ -145,6 +226,10 @@ class PrimitiveSphere:
             Vector3D.read(reader),
             reader.read_float(),
         )
+
+    def write(self, writer: Writer):
+        self.location.write(writer)
+        writer.write_float(self.radius)
 
 
 @dataclass
@@ -161,6 +246,11 @@ class PrimitiveCapsule:
             reader.read_float(),
         )
 
+    def write(self, writer: Writer):
+        self.location.write(writer)
+        self.rotation.write(writer)
+        writer.write_float(self.radius)
+
 
 @dataclass
 class PrimitiveTriangle:
@@ -176,6 +266,11 @@ class PrimitiveTriangle:
             Vector3D.read(reader),
         )
 
+    def write(self, writer: Writer):
+        self.location.write(writer)
+        self.edge_a.write(writer)
+        self.edge_b.write(writer)
+
 
 @dataclass
 class PrimitiveTriangleList:
@@ -186,6 +281,11 @@ class PrimitiveTriangleList:
         triangles_num = reader.read_int()
         triangles = [PrimitiveTriangle.read(reader) for _ in range(triangles_num)]
         return cls(triangles)
+
+    def write(self, writer: Writer):
+        writer.write_int(len(self.triangles))
+        for triangle in self.triangles:
+            triangle.write(writer)
 
 
 class Collision:
@@ -211,6 +311,13 @@ class Collision:
             self.primitive = PrimitiveTriangleList.read(reader)
 
         return self
+
+    def write(self, writer: Writer, version: int):
+        writer.write_int(self.type)
+        if version > 10:
+            writer.write_int(len(self.name) + 1)
+            writer.write_string(self.name)
+        self.primitive.write(writer)
 
     def __init__(self):
         self.type = 0
@@ -244,10 +351,43 @@ class MSH:
         self.collisions = [Collision.read(reader, self.version) for _ in range(cols_num)]
         self.dummies = [Dummy.read(reader, self.version) for _ in range(dummies_num)]
 
+    def save_memory(self) -> bytes:
+        writer = Writer()
+
+        writer.write_string(self.file_type, 256)
+        writer.write_int(self.version)
+
+        writer.write_int((len(self.meshes), 1, 0))
+
+        self.bb_max.write(writer)
+        self.bb_min.write(writer)
+
+        writer.write_int((len(self.bones), len(self.collisions), len(self.dummies)))
+        writer.write_bytes(b'\0' * (1024 - len(writer.data)))
+
+        for bone in self.bones:
+            bone.write(writer)
+
+        for mesh in self.meshes:
+            mesh.write(writer)
+
+        for collision in self.collisions:
+            collision.write(writer, self.version)
+
+        for dummy in self.dummies:
+            dummy.write(writer, self.version)
+
+        return writer.data
+
     def load_file(self, filename: str):
         with open(filename, mode="rb") as file:
             data = file.read()
             self.load_memory(data)
+
+    def save_file(self, filename: str):
+        with open(filename, mode="wb") as file:
+            data = self.save_memory()
+            file.write(data)
 
     def clear(self):
         self.file_type = ""

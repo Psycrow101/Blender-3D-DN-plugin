@@ -51,6 +51,29 @@ class Animation:
             locations, rotations, scales,
         )
 
+    def write(self, writer: Writer, write_frame_func, write_rotation_func):
+        self.base_location.write(writer)
+        self.base_rotation.write(writer)
+        self.base_scale.write(writer)
+
+        # locations
+        writer.write_int(len(self.locations))
+        for kf in self.locations:
+            write_frame_func(kf.frame)
+            kf.value.write(writer)
+
+        # rotations
+        writer.write_int(len(self.rotations))
+        for kf in self.rotations:
+            write_frame_func(kf.frame)
+            write_rotation_func(kf.value)
+
+        # scales
+        writer.write_int(len(self.scales))
+        for kf in self.scales:
+            write_frame_func(kf.frame)
+            kf.value.write(writer)
+
 
 @dataclass
 class AnimationBone:
@@ -123,10 +146,50 @@ class ANI:
             bone = AnimationBone(bone_name, bone_parent_name, bone_anims)
             self.bones.append(bone)
 
+    def save_memory(self) -> bytes:
+        writer = Writer()
+
+        writer.write_string(self.file_type, 256)
+        writer.write_int(self.version)
+
+        bones_num = len(self.bones)
+        anims_num = len(self.names)
+
+        writer.write_int((bones_num, anims_num))
+        writer.write_bytes(b'\0' * (1024 - len(writer.data)))
+
+        for name in self.names:
+            writer.write_string(name, 256)
+
+        writer.write_int(self.frames_num)
+
+        if self.version < 11:
+            write_frame_func = writer.write_int
+            write_rotation_func = Vector4D.write
+        else:
+            write_frame_func = writer.write_short
+            write_rotation_func = Vector4D.write_short
+
+        for bone in self.bones:
+            writer.write_string(bone.name, 256)
+            writer.write_string(bone.parent_name, 256)
+
+            writer.write_bytes(b'\0' * 512)
+
+            for anim in bone.animations:
+                anim.write(writer, write_frame_func, write_rotation_func)
+
+        return writer.data
+
     def load_file(self, filename: str):
         with open(filename, mode="rb") as file:
             data = file.read()
             self.load_memory(data)
+
+    def save_file(self, filename: str):
+        with open(filename, mode="wb") as file:
+            data = self.save_memory()
+            file.write(data)
 
     def clear(self):
         self.file_type = ""

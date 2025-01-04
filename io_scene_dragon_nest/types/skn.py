@@ -4,6 +4,7 @@ from typing import Any, List
 
 from .common import *
 from .reader import Reader
+from .writer import Writer
 
 
 class MatPropType(IntEnum):
@@ -49,6 +50,24 @@ class MaterialProperty:
             value,
         )
 
+    def write(self, writer: Writer):
+        writer.write_int(len(self.name) + 1)
+        writer.write_string(self.name)
+        writer.write_int(self.type)
+
+        if self.type == MatPropType.INT:
+            writer.write_int(self.value)
+
+        elif self.type == MatPropType.FLOAT:
+            writer.write_float(self.value)
+
+        elif self.type == MatPropType.VECTOR:
+            self.value.write(writer)
+
+        elif self.type == MatPropType.TEXTURE:
+            writer.write_int(len(self.value) + 1)
+            writer.write_string(self.value)
+
 
 @dataclass
 class Material:
@@ -78,6 +97,19 @@ class Material:
             alpha_blend,
             props,
         )
+
+    def write(self, writer: Writer):
+        writer.write_string(self.name, 256)
+        writer.write_string(self.effect, 256)
+
+        writer.write_float(self.alpha)
+        writer.write_int(self.alpha_blend)
+
+        writer.write_bytes(b'\0' * (512 - 8))
+
+        writer.write_int(len(self.properties))
+        for prop in self.properties:
+            prop.write(writer)
 
 
 class SKN:
@@ -123,10 +155,30 @@ class SKN:
             body_reader = Reader(body)
             self.materials = [Material.read(body_reader) for _ in range(materials_num)]
 
+    def save_memory(self) -> bytes:
+        writer = Writer()
+
+        writer.write_string(self.file_type, 256)
+        writer.write_string(self.name, 256)
+        writer.write_int(self.version)
+        writer.write_int((len(self.materials), 0, 0))
+        writer.write_bytes(b'\0' * (512 - 16))
+
+        # TODO: version 11
+        for material in self.materials:
+            material.write(writer)
+
+        return writer.data
+
     def load_file(self, filename: str):
         with open(filename, mode="rb") as file:
             data = file.read()
             self.load_memory(data)
+
+    def save_file(self, filename: str):
+        with open(filename, mode="wb") as file:
+            data = self.save_memory()
+            file.write(data)
 
     def clear(self):
         self.file_type = ""

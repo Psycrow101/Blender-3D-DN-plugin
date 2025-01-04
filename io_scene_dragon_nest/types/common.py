@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from .reader import Reader
+from .writer import Writer
 
 
 @dataclass
@@ -15,6 +16,9 @@ class Vector3D:
 
     def unpack(self) -> tuple:
         return (self.x, self.y, self.z)
+
+    def write(self, writer: Writer):
+        writer.write_float(self.unpack())
 
 
 @dataclass
@@ -35,6 +39,13 @@ class Vector4D:
 
     def unpack(self) -> tuple:
         return (self.x, self.y, self.z, self.w)
+
+    def write(self, writer: Writer):
+        writer.write_float(self.unpack())
+
+    def write_short(self, writer: Writer):
+        vals = tuple(int(v * 2 ** 15) for v in self.unpack())
+        writer.write_short(vals)
 
 
 @dataclass
@@ -65,6 +76,11 @@ class Matrix3x3:
             self.v2.unpack(),
             self.v3.unpack(),
         )
+
+    def write(self, writer: Writer):
+        self.v1.write(writer)
+        self.v2.write(writer)
+        self.v3.write(writer)
 
 
 @dataclass
@@ -99,3 +115,9 @@ class Matrix4x4:
             self.v3.unpack(),
             self.v4.unpack(),
         )
+
+    def write(self, writer: Writer):
+        self.v1.write(writer)
+        self.v2.write(writer)
+        self.v3.write(writer)
+        self.v4.write(writer)
