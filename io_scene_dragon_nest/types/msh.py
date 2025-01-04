@@ -72,16 +72,16 @@ class Mesh:
 
         # faces
         if self.use_tristrip:
-            v1, v2 = reader.read_short(2)
+            v1, v2 = reader.read_ushort(2)
             direct = -1
             for _ in range(indices_num - 2):
-                v3 = reader.read_short()
+                v3 = reader.read_ushort()
                 direct *= -1
                 if v1 != v2 and v2 != v3 and v1 != v3:
                     self.faces.append([v1, v2, v3] if direct > 0 else [v1, v3, v2])
                 v1, v2 = v2, v3
         else:
-            self.faces = [reader.read_short(3) for _ in range(indices_num // 3)]
+            self.faces = [reader.read_ushort(3) for _ in range(indices_num // 3)]
 
         # vertices, normals, uvs
         self.vertices = [reader.read_float(3) for _ in range(verts_num)]

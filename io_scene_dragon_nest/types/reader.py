@@ -34,6 +34,13 @@ class Reader:
         self._pos += 2 * num
         return data
 
+    def read_ushort(self, num=1) -> Union[int, Tuple[int]]:
+        data = unpack_from(f'<{num}H', self._data, self._pos)
+        if num == 1:
+            data = data[0]
+        self._pos += 2 * num
+        return data
+
     def read_string(self, size=None) -> str:
         if size is None:
             pos, size = self._pos, 1
