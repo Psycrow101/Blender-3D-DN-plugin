@@ -1,6 +1,7 @@
 import bpy
 from bpy.props import (
         BoolProperty,
+        IntProperty,
         StringProperty,
         EnumProperty,
         )
@@ -100,6 +101,28 @@ class DN_Import(bpy.types.Operator, ImportHelper):
             if not ani_imp.imported:
                 bpy.ops.dialog.anim_chooser_box('INVOKE_DEFAULT')
 
+        return {'FINISHED'}
+
+
+class DN_AddExtraPropItem(bpy.types.Operator):
+    bl_label = "Add Item"
+    bl_idname = "material.dragon_nest_add_extra_prop_item"
+
+    def execute(self, context):
+        material = context.material
+        material.dragon_nest.extra.add()
+        return {'FINISHED'}
+
+
+class DN_RemoveExtraPropItem(bpy.types.Operator):
+    bl_label = "Remove Item"
+    bl_idname = "material.dragon_nest_remove_extra_prop_item"
+
+    index: IntProperty()
+
+    def execute(self, context):
+        material = context.material
+        material.dragon_nest.extra.remove(self.index)
         return {'FINISHED'}
 
 

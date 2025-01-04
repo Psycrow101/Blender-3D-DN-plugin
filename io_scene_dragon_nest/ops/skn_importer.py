@@ -42,7 +42,7 @@ class SknImporter:
                 material.dragon_nest.enable_colors = False
 
                 for prop in skn_mat.properties:
-                    if prop.type == MatPropType.TEXTURE:
+                    if prop.type == MatPropType.TEXTURE and prop.value[-4:].lower() == ".dds":
                         texture = bpy.data.textures.get(prop.value) or bpy.data.textures.new(prop.value, type='IMAGE')
                         texture.image = bpy.data.images.get(prop.value) or load_image(prop.value, options['directory'])
 
@@ -83,6 +83,20 @@ class SknImporter:
 
                     elif prop.name == "g_MaskTex":
                         material.dragon_nest.mask_texture = prop.value
+
+                    else:
+                        extra_prop = material.dragon_nest.extra.add()
+                        extra_prop.name = prop.name
+                        extra_prop.type = str(prop.type)
+
+                        if prop.type == MatPropType.INT:
+                            extra_prop.integer_value = prop.value
+                        elif prop.type == MatPropType.FLOAT:
+                            extra_prop.float_value = prop.value
+                        elif prop.type == MatPropType.VECTOR:
+                            extra_prop.vector_value = prop.value.unpack()
+                        elif prop.type == MatPropType.TEXTURE:
+                            extra_prop.string_value = prop.value
 
             self.materials.append(material)
 

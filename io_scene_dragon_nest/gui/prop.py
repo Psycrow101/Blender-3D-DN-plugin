@@ -175,6 +175,29 @@ class DN_ObjectProps(bpy.types.PropertyGroup):
         bpy.types.Object.dragon_nest = bpy.props.PointerProperty(type=DN_ObjectProps)
 
 
+class DN_MaterialExtraProps(bpy.types.PropertyGroup):
+
+    name: bpy.props.StringProperty(
+        name = "Name"
+    )
+
+    type: bpy.props.EnumProperty(
+        name = "Type",
+        items = (
+            ('0', 'Integer', 'Integer'),
+            ('1', 'Float', 'Float'),
+            ('2', 'Vector', 'Vector'),
+            ('3', 'String', 'String'),
+            ('4', 'None', 'None'),
+        )
+    )
+
+    integer_value: bpy.props.IntProperty()
+    float_value: bpy.props.FloatProperty()
+    vector_value: bpy.props.FloatVectorProperty(size = 4)
+    string_value: bpy.props.StringProperty()
+
+
 class DN_MaterialProps(bpy.types.PropertyGroup):
 
     def alpha_value_changed(self, context):
@@ -284,6 +307,8 @@ class DN_MaterialProps(bpy.types.PropertyGroup):
             name = "Mask Texture",
             search = texture_search_func
         )
+
+    extra: bpy.props.CollectionProperty(type=DN_MaterialExtraProps)
 
     def register():
         bpy.types.Material.dragon_nest = bpy.props.PointerProperty(type=DN_MaterialProps)

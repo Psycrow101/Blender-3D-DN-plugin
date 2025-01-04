@@ -1,5 +1,7 @@
 import bpy
 
+from .operator import DN_AddExtraPropItem, DN_RemoveExtraPropItem
+
 
 class OBJECT_PT_DNObjects(bpy.types.Panel):
 
@@ -108,6 +110,27 @@ class MATERIAL_PT_DNMaterials(bpy.types.Panel):
             box.prop(settings, "emissive_power", text="Emissive Power")
             box.prop(settings, "emissive_power_range", text="Emissive Power Range")
             box.prop(settings, "emissive_ani_speed", text="Emissive Animation Speed")
+
+        box = layout.box()
+        box.label(text="Extra")
+
+        for idx, extra_prop in enumerate(settings.extra):
+            prop_box = box.box()
+            prop_box.prop(extra_prop, "name", text="Name")
+            prop_box.prop(extra_prop, "type", text="Type")
+
+            if extra_prop.type < "4":
+                value_name = {
+                    "0": "integer_value",
+                    "1": "float_value",
+                    "2": "vector_value",
+                    "3": "string_value",
+                }[extra_prop.type]
+                prop_box.prop(extra_prop, value_name, text="Value")
+
+            prop_box.operator(DN_RemoveExtraPropItem.bl_idname, icon='REMOVE', text="Remove Item").index = idx
+
+        box.operator(DN_AddExtraPropItem.bl_idname, icon='ADD', text="Add Item")
 
     def draw(self, context):
         if not context.material or not context.material.dragon_nest:

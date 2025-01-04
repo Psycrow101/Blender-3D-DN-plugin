@@ -17,9 +17,12 @@ bl_info = {
 
 classes = (
     gui.DN_Import,
+    gui.DN_AddExtraPropItem,
+    gui.DN_RemoveExtraPropItem,
     gui.DN_AnimChooserBox,
     gui.DN_CollisionObjectProps,
     gui.DN_ObjectProps,
+    gui.DN_MaterialExtraProps,
     gui.DN_MaterialProps,
     gui.DN_BoneProps,
     gui.OBJECT_PT_DNObjects,
