@@ -4,6 +4,7 @@ import bmesh
 from math import radians
 from mathutils import Matrix
 
+from .common import ORIENTATION_MATRIX
 from ..gui import gui
 from ..types.msh import MSH, CollisionType
 
@@ -15,7 +16,6 @@ class MshImporter:
         collection = view_layer.active_layer_collection.collection
 
         append_armature = options.get("append_armature")
-        global_matrix = options.get("global_matrix")
 
         if append_armature:
             arm_obj = append_armature
@@ -51,9 +51,7 @@ class MshImporter:
             arm_obj.dragon_nest.bbox_min = self.msh.bb_min.unpack()
             arm_obj.dragon_nest.bbox_max = self.msh.bb_max.unpack()
             arm_obj.show_in_front = True
-
-            if global_matrix:
-                arm_obj.matrix_world = global_matrix
+            arm_obj.matrix_world = ORIENTATION_MATRIX.copy()
 
             collection.objects.link(arm_obj)
             view_layer.objects.active = arm_obj
@@ -234,7 +232,6 @@ def load(context, filepath, *, append_to_target, global_matrix=None):
 
     msh_options = {
         "append_armature": append_armature,
-        "global_matrix": global_matrix,
     }
 
     msh_importer = MshImporter()

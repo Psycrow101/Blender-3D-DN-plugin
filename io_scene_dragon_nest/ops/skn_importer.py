@@ -147,7 +147,6 @@ def load(context, filepath, *, append_to_target, global_matrix=None):
 
     msh_options = {
         "append_armature": append_armature,
-        "global_matrix": global_matrix,
     }
 
     msh_importer = MshImporter()

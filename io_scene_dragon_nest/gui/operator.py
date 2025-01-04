@@ -7,8 +7,6 @@ from bpy.props import (
         )
 from bpy_extras.io_utils import (
         ImportHelper,
-        orientation_helper,
-        axis_conversion,
         )
 
 
@@ -55,7 +53,6 @@ class DN_AnimChooserBox(bpy.types.Operator):
         ani_imp = None
 
 
-@orientation_helper(axis_forward='-Z', axis_up='Y')
 class DN_Import(bpy.types.Operator, ImportHelper):
     bl_idname = "import_scene.dragon_nest"
     bl_label = "Import Dragon Nest Model / Animation"
@@ -71,13 +68,7 @@ class DN_Import(bpy.types.Operator, ImportHelper):
     )
 
     def execute(self, context):
-        keywords = self.as_keywords(ignore=("axis_forward",
-                                            "axis_up",
-                                            "filter_glob",
-                                            ))
-        keywords["global_matrix"] = axis_conversion(from_forward=self.axis_forward,
-                                                    from_up=self.axis_up,
-                                                    ).to_4x4()
+        keywords = self.as_keywords(ignore=("filter_glob",))
 
         filepath = keywords["filepath"]
         if filepath.lower().endswith(".skn"):
