@@ -106,6 +106,7 @@ class MshExporter:
             if obj.type == "MESH":
                 mesh = MshExporter.convert_to_mesh(context, obj)
                 MshExporter.triangulate_mesh(mesh)
+                mesh.transform(obj.matrix_local)
 
                 for polygon in mesh.polygons:
                     co1 = mesh.vertices[polygon.vertices[0]].co
