@@ -48,8 +48,8 @@ class MshImporter:
 
             arm_obj = bpy.data.objects.new("Scene Root", arm)
             arm_obj.dragon_nest.type = 'OBJ'
-            arm_obj.dragon_nest.bbox_min = self.msh.bb_min.unpack()
-            arm_obj.dragon_nest.bbox_max = self.msh.bb_max.unpack()
+            arm_obj.dragon_nest.bbox_min = (self.msh.bb_min.x, self.msh.bb_min.z, self.msh.bb_min.y)
+            arm_obj.dragon_nest.bbox_max = (self.msh.bb_max.x, self.msh.bb_max.z, self.msh.bb_max.y)
             arm_obj.show_in_front = True
 
             collection.objects.link(arm_obj)
