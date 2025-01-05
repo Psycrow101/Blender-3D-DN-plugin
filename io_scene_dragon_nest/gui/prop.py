@@ -40,6 +40,10 @@ EFFECT_NAMES = (
 )
 
 
+def texture_search_func(props, context, edit_text):
+    return [img.name for img in bpy.data.images]
+
+
 class DN_CollisionObjectProps(bpy.types.PropertyGroup):
 
     def type_changed(self, context):
@@ -195,7 +199,12 @@ class DN_MaterialExtraProps(bpy.types.PropertyGroup):
     integer_value: bpy.props.IntProperty()
     float_value: bpy.props.FloatProperty()
     vector_value: bpy.props.FloatVectorProperty(size = 4)
-    string_value: bpy.props.StringProperty()
+
+    # NOTE: bpy.props.StringProperty supports a search argument since version 3.3
+    if bpy.app.version < (3, 3, 0):
+        string_value: bpy.props.StringProperty()
+    else:
+        string_value: bpy.props.StringProperty(search = texture_search_func)
 
 
 class DN_MaterialProps(bpy.types.PropertyGroup):
@@ -220,9 +229,6 @@ class DN_MaterialProps(bpy.types.PropertyGroup):
 
     def effect_search_func(props, context, edit_text):
         return EFFECT_NAMES
-
-    def texture_search_func(props, context, edit_text):
-        return [img.name for img in bpy.data.images]
 
     alpha_value: bpy.props.FloatProperty(
         name = "Alpha Value",
