@@ -2,9 +2,9 @@ import bpy
 import bmesh
 
 from math import radians
-from mathutils import Matrix
+from mathutils import Euler, Matrix
 
-from .common import ORIENTATION_MATRIX
+from .common import oriented_matrix, translation_matrix, rotation_matrix, scale_matrix
 from ..gui import gui
 from ..types.msh import MSH, CollisionType
 
@@ -29,7 +29,7 @@ class MshImporter:
                 if arm.edit_bones.get(msh_bone.name):
                     continue
 
-                mat = Matrix(msh_bone.matrix.unpack()).transposed().inverted_safe()
+                mat = oriented_matrix(Matrix(msh_bone.matrix.unpack()).transposed().inverted_safe())
 
                 bone = arm.edit_bones.new(msh_bone.name)
                 bone.head = (0, 0, 0)
@@ -51,7 +51,6 @@ class MshImporter:
             arm_obj.dragon_nest.bbox_min = self.msh.bb_min.unpack()
             arm_obj.dragon_nest.bbox_max = self.msh.bb_max.unpack()
             arm_obj.show_in_front = True
-            arm_obj.matrix_world = ORIENTATION_MATRIX.copy()
 
             collection.objects.link(arm_obj)
             view_layer.objects.active = arm_obj
@@ -61,7 +60,7 @@ class MshImporter:
             # create bones
             bpy.ops.object.mode_set(mode='EDIT')
             for msh_bone in self.msh.bones:
-                mat = Matrix(msh_bone.matrix.unpack()).transposed().inverted_safe()
+                mat = oriented_matrix(Matrix(msh_bone.matrix.unpack()).transposed().inverted_safe())
 
                 bone = arm.edit_bones.new(msh_bone.name)
                 bone.head = (0, 0, 0)
@@ -79,10 +78,14 @@ class MshImporter:
         for msh_mesh in self.msh.meshes:
             mesh = bpy.data.meshes.new(msh_mesh.name)
 
-            mesh.from_pydata(msh_mesh.vertices, [], msh_mesh.faces)
+            vertices = tuple((v[0], v[2], v[1]) for v in msh_mesh.vertices)
+            faces = tuple((f[0], f[2], f[1]) for f in msh_mesh.faces)
+            normals = tuple((n[0], n[2], n[1]) for n in msh_mesh.normals)
+
+            mesh.from_pydata(vertices, [], faces)
             if bpy.app.version < (4, 1, 0):
                 mesh.use_auto_smooth = True
-            mesh.normals_split_custom_set_from_vertices(msh_mesh.normals)
+            mesh.normals_split_custom_set_from_vertices(normals)
 
             bm = bmesh.new()
             bm.from_mesh(mesh)
@@ -130,9 +133,10 @@ class MshImporter:
             collection.objects.link(dummy_obj)
 
             if self.msh.version > 12:
-                matrix = Matrix(msh_dummy.transformation.unpack()).transposed()
+                matrix = oriented_matrix(Matrix(msh_dummy.transformation.unpack()).transposed())
             else:
-                matrix = Matrix.Translation(msh_dummy.transformation.unpack())
+                location = msh_dummy.transformation
+                matrix = translation_matrix((location.x, location.z, location.y))
 
             dummy_obj.matrix_local = matrix
             dummy_obj.parent = arm_obj
@@ -146,40 +150,46 @@ class MshImporter:
             collection.children.link(col_collection)
 
             for idx, msh_collision in enumerate(self.msh.collisions):
+                primitive = msh_collision.primitive
+
                 if self.msh.version > 10:
                     col_name = msh_collision.name
                 else:
                     col_name = "Collision %d" % idx
 
                 if msh_collision.type == CollisionType.BOX:
+                    loc_mat = translation_matrix(primitive.location.unpack())
+                    rot_mat = Matrix(primitive.axis.unpack()).transposed().to_4x4()
+                    scl_mat = scale_matrix(primitive.extent.unpack())
+
                     col_obj = bpy.data.objects.new(col_name, None)
-                    col_obj.location = msh_collision.primitive.location.unpack()
-                    col_obj.rotation_euler = Matrix(msh_collision.primitive.axis.unpack()).transposed().to_euler()
-                    col_obj.scale = msh_collision.primitive.extent.unpack()
+                    col_obj.matrix_local = oriented_matrix(loc_mat @ rot_mat @ scl_mat)
 
                 elif msh_collision.type == CollisionType.SPHERE:
                     col_obj = bpy.data.objects.new(col_name, None)
-                    col_obj.location = msh_collision.primitive.location.unpack()
-                    col_obj.scale = (msh_collision.primitive.radius,) * 3
+                    col_obj.location = (primitive.location.x, primitive.location.z, primitive.location.y)
+                    col_obj.scale = (primitive.radius,) * 3
 
                 elif msh_collision.type == CollisionType.CAPSULE:
-                    rotation = msh_collision.primitive.rotation
+                    rot = primitive.rotation
+
+                    loc_mat = translation_matrix(primitive.location.unpack())
+                    rot_mat = rotation_matrix(Euler((radians(rot.x), radians(rot.y), radians(rot.z))))
+                    scl_mat = scale_matrix((primitive.radius,) * 3)
 
                     col_obj = bpy.data.objects.new(col_name, None)
-                    col_obj.location = msh_collision.primitive.location.unpack()
-                    col_obj.rotation_euler = (radians(rotation.x), radians(rotation.y), radians(rotation.z))
-                    col_obj.scale = (msh_collision.primitive.radius,) * 3
+                    col_obj.matrix_local = oriented_matrix(loc_mat @ rot_mat @ scl_mat)
 
                 elif msh_collision.type == CollisionType.TRIANGLE_LIST:
                     vertices, faces = [], []
                     vertex_idx = 0
 
-                    for triangle in msh_collision.primitive.triangles:
-                        v1 = triangle.location.unpack()
-                        v2 = (v1[0] + triangle.edge_a.x, v1[1] + triangle.edge_a.y, v1[2] + triangle.edge_a.z)
-                        v3 = (v1[0] + triangle.edge_b.x, v1[1] + triangle.edge_b.y, v1[2] + triangle.edge_b.z)
+                    for triangle in primitive.triangles:
+                        v1 = (triangle.location.x, triangle.location.z, triangle.location.y)
+                        v2 = (v1[0] + triangle.edge_a.x, v1[1] + triangle.edge_a.z, v1[2] + triangle.edge_a.y)
+                        v3 = (v1[0] + triangle.edge_b.x, v1[1] + triangle.edge_b.z, v1[2] + triangle.edge_b.y)
                         vertices.extend((v1, v2, v3))
-                        faces.append((vertex_idx, vertex_idx + 1, vertex_idx + 2))
+                        faces.append((vertex_idx, vertex_idx + 2, vertex_idx + 1))
                         vertex_idx += 3
 
                     col_data = bpy.data.meshes.new(col_name)

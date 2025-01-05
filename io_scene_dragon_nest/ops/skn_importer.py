@@ -69,8 +69,8 @@ class SknImporter:
                         node_texture.image = texture.image
                         node_texture.texcoords = 'UV'
 
-                                material.blend_method = 'HASHED'
-                                add_transparent_node(material.node_tree)
+                        material.blend_method = 'HASHED'
+                        add_transparent_node(material.node_tree)
 
                     elif prop.name == "g_EmissiveTex":
                         material.dragon_nest.emissive_texture = prop.value

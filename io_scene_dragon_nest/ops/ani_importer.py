@@ -4,24 +4,11 @@ import os
 from mathutils import Quaternion, Vector, Matrix
 from typing import List
 
+from .common import oriented_matrix, translation_matrix, rotation_matrix, scale_matrix
 from ..gui import gui
 from ..types.ani import ANI, ANIM, AnimationBone
 
 ANIM_ID_ALL = -1
-
-
-def translation_matrix(v):
-    return Matrix.Translation(v)
-
-
-def rotation_matrix(v):
-    return v.to_matrix().to_4x4()
-
-
-def scale_matrix(v):
-    mat = Matrix.Identity(4)
-    mat[0][0], mat[1][1], mat[2][2] = v[0], v[1], v[2]
-    return mat
 
 
 def set_keyframe(fcurves, frame, values):
@@ -109,7 +96,7 @@ def create_actions(armature_object, animation_bones: List[AnimationBone], anim_i
             ))
             scl = Vector(anim.base_scale.unpack())
 
-            mat = translation_matrix(loc) @ rotation_matrix(rot) @ scale_matrix(scl)
+            mat = oriented_matrix(translation_matrix(loc) @ rotation_matrix(rot) @ scale_matrix(scl))
             mat_basis = local_to_basis_matrix(mat, def_mat, parent_def_mat)
 
             set_keyframe(fcurves_location, 0, mat_basis.to_translation())
@@ -117,20 +104,18 @@ def create_actions(armature_object, animation_bones: List[AnimationBone], anim_i
             set_keyframe(fcurves_scale, 0, mat_basis.to_scale())
 
             for kf in anim.locations:
-                loc = Vector(kf.value.unpack())
-                mat = translation_matrix(loc)
+                mat = translation_matrix((kf.value.x, kf.value.z, kf.value.y))
                 mat_basis = local_to_basis_matrix(mat, def_mat, parent_def_mat)
                 set_keyframe(fcurves_location, kf.frame, mat_basis.to_translation())
 
             for kf in anim.rotations:
                 rot = Quaternion((kf.value.w, kf.value.x, kf.value.y, kf.value.z))
-                mat = rotation_matrix(rot)
+                mat = oriented_matrix(rotation_matrix(rot))
                 mat_basis = local_to_basis_matrix(mat, def_mat, parent_def_mat)
                 set_keyframe(fcurves_rotation, kf.frame, mat_basis.to_quaternion())
 
             for kf in anim.scales:
-                scl = Vector(kf.value.unpack())
-                mat = scale_matrix(scl)
+                mat = scale_matrix((kf.value.x, kf.value.z, kf.value.y))
                 mat_basis = local_to_basis_matrix(mat, def_mat, parent_def_mat)
                 set_keyframe(fcurves_scale, kf.frame, mat_basis.to_scale())
 
