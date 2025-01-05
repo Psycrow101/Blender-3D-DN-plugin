@@ -10,6 +10,10 @@ def oriented_matrix(mat: Matrix) -> Matrix:
     return ORIENTATION_MATRIX @ mat @ ORIENTATION_MATRIX
 
 
+def unoriented_matrix(mat: Matrix) -> Matrix:
+    return ORIENTATION_MATRIX.inverted() @ mat @ ORIENTATION_MATRIX.inverted()
+
+
 def translation_matrix(v):
     return Matrix.Translation(v)
 

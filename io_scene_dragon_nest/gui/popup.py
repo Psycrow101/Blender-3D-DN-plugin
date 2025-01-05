@@ -16,3 +16,15 @@ def missing_msh(self, context):
 
 def invalid_armature(self, context):
     self.layout.label(text='Invalid armature')
+
+
+def need_armature_to_export(self, context):
+    self.layout.label(text='Make the armature (Scene Root) active for export')
+
+
+def missing_material(self, context):
+    self.layout.label(text='Missing material')
+
+
+def too_many_materials(self, context):
+    self.layout.label(text='Only one material per mesh is supported')
