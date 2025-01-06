@@ -166,6 +166,36 @@ class DN_ExportMSH(bpy.types.Operator, ExportHelper):
         return {'FINISHED'}
 
 
+class DN_ExportANI(bpy.types.Operator, ExportHelper):
+    bl_idname = "export_scene.dragon_nest_ani"
+    bl_label = "Export Dragon Nest Animation"
+    bl_options = {'PRESET'}
+
+    filename_ext = ".ani"
+    filter_glob: StringProperty(default="*.ani", options={'HIDDEN'})
+
+    ani_version: EnumProperty(
+        name = "Animation Version",
+        items = (
+            ('10', '10', ''),
+            ('11', '11', ''),
+        ),
+        default = '11'
+    )
+
+    def execute(self, context):
+        filepath = self.filepath
+        options = {
+            "ani_version": int(self.ani_version),
+        }
+
+        from ..ops import ani_exporter
+        if not ani_exporter.save(context, filepath, options):
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
+
+
 class DN_AddExtraPropItem(bpy.types.Operator):
     bl_label = "Add Item"
     bl_idname = "material.dragon_nest_add_extra_prop_item"
@@ -196,6 +226,8 @@ class DN_MT_ExportChoice(bpy.types.Menu):
                              text="Skin (.skn) + Mesh (.msh)")
         self.layout.operator(DN_ExportMSH.bl_idname,
                              text="Mesh (.msh)")
+        self.layout.operator(DN_ExportANI.bl_idname,
+                             text="Animation (.ani)")
 
 
 def menu_func_import(self, context):

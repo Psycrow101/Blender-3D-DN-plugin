@@ -1,6 +1,7 @@
 import os
 
-from .msh_exporter import MshExporter, get_active_armature_object
+from .common import get_active_armature_object
+from .msh_exporter import MshExporter
 from ..gui import gui
 from ..types import common
 from ..types.skn import SKN, Material, MaterialProperty, MatPropType

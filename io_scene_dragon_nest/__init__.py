@@ -19,6 +19,7 @@ classes = (
     gui.DN_Import,
     gui.DN_ExportSKN,
     gui.DN_ExportMSH,
+    gui.DN_ExportANI,
     gui.DN_AddExtraPropItem,
     gui.DN_RemoveExtraPropItem,
     gui.DN_MT_ExportChoice,

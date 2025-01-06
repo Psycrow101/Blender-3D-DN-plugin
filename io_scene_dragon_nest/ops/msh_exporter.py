@@ -3,7 +3,7 @@ import bpy
 
 from math import degrees
 
-from .common import unoriented_matrix, scale_matrix
+from .common import unoriented_matrix, scale_matrix, get_active_armature_object
 from ..gui import gui
 from ..types import common
 from ..types.msh import MSH, Bone, Collision, Dummy, Mesh, CollisionType
@@ -260,19 +260,6 @@ class MshExporter:
     def __init__(self):
         self.msh = MSH()
         self.mesh_objects = []
-
-
-def get_active_armature_object(context):
-    arm_obj = context.object
-    if not arm_obj:
-        return
-
-    if arm_obj.type == 'ARMATURE':
-        return arm_obj
-
-    arm_obj = arm_obj.parent
-    if arm_obj and arm_obj.type == 'ARMATURE':
-        return arm_obj
 
 
 def save(context, filepath, options):

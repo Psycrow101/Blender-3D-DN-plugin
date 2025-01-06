@@ -4,7 +4,7 @@ import os
 from mathutils import Quaternion, Vector, Matrix
 from typing import List
 
-from .common import oriented_matrix, translation_matrix, rotation_matrix, scale_matrix
+from .common import oriented_matrix, translation_matrix, rotation_matrix, scale_matrix, get_armature_matrices
 from ..gui import gui
 from ..types.ani import ANI, ANIM, AnimationBone
 
@@ -32,13 +32,6 @@ def get_active_armature(context):
     arm_obj = context.view_layer.objects.active
     if arm_obj and type(arm_obj.data) == bpy.types.Armature:
         return arm_obj
-
-
-def get_armature_matrices(armature_object):
-    matrices = {}
-    for bone in armature_object.data.bones:
-        matrices[bone.name] = bone.matrix_local @ scale_matrix(bone.dragon_nest.scale)
-    return matrices
 
 
 def local_to_basis_matrix(local_matrix, global_matrix, parent_matrix):

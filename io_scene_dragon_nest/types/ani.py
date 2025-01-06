@@ -122,7 +122,7 @@ class ANI:
         reader._pos = 1024
 
         self.names = [reader.read_string(256) for _ in range(anims_num)]
-        self.frames_num = [reader.read_int() for _ in range(anims_num)] 
+        self.frames_num = [reader.read_int() for _ in range(anims_num)]
 
         if self.version < 11:
             read_frame_func = reader.read_int
