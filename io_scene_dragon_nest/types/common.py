@@ -44,7 +44,7 @@ class Vector4D:
         writer.write_float(self.unpack())
 
     def write_short(self, writer: Writer):
-        vals = tuple(int(v * 2 ** 15) for v in self.unpack())
+        vals = tuple(int(v * 0x7fff) for v in self.unpack())
         writer.write_short(vals)
 
 

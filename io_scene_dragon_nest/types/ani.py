@@ -66,7 +66,7 @@ class Animation:
         writer.write_int(len(self.rotations))
         for kf in self.rotations:
             write_frame_func(kf.frame)
-            write_rotation_func(kf.value)
+            write_rotation_func(kf.value, writer)
 
         # scales
         writer.write_int(len(self.scales))
@@ -122,7 +122,7 @@ class ANI:
         reader._pos = 1024
 
         self.names = [reader.read_string(256) for _ in range(anims_num)]
-        self.frames_num = list(reader.read_int(anims_num))
+        self.frames_num = [reader.read_int() for _ in range(anims_num)] 
 
         if self.version < 11:
             read_frame_func = reader.read_int
