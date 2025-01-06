@@ -247,10 +247,12 @@ def save(context, filepath, options):
         context.window_manager.popup_menu(gui.need_armature_to_export, title='Error', icon='ERROR')
         return
 
+    actions = [act for act in bpy.data.actions if act.dragon_nest.use_export]
+
     ani_options = {
         "version": options["ani_version"],
         "armature_object": arm_obj,
-        "actions": bpy.data.actions,
+        "actions": actions,
     }
 
     ani_exporter = AniExporter()

@@ -183,6 +183,17 @@ class DN_ExportANI(bpy.types.Operator, ExportHelper):
         default = '11'
     )
 
+    def draw(self, context):
+        layout = self.layout
+
+        layout.prop(self, "ani_version", text="Version")
+
+        box = layout.box()
+        box.label(text="Actions")
+
+        for act in bpy.data.actions:
+            box.prop(act.dragon_nest, "use_export", text=act.name)
+
     def execute(self, context):
         filepath = self.filepath
         options = {

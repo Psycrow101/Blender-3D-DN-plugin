@@ -329,3 +329,11 @@ class DN_BoneProps(bpy.types.PropertyGroup):
 
     def register():
         bpy.types.Bone.dragon_nest = bpy.props.PointerProperty(type=DN_BoneProps)
+
+
+class DN_ActionProps(bpy.types.PropertyGroup):
+
+    use_export: bpy.props.BoolProperty(name="Use Export", default=True)
+
+    def register():
+        bpy.types.Action.dragon_nest = bpy.props.PointerProperty(type=DN_ActionProps)
