@@ -5,7 +5,7 @@ from .gui import gui
 bl_info = {
     "name": "Import Dragon Nest Model / Animation",
     "author": "Psycrow",
-    "version": (0, 2, 2),
+    "version": (0, 2, 3),
     "blender": (2, 80, 0),
     "location": "File > Import-Export",
     "description": "Import Dragon Nest Model / Animation (.msh, .ani, .anim)",

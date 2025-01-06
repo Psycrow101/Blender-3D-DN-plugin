@@ -1,9 +1,8 @@
 # dn-model-import
 
-**dn-model-import** is a plugin for Blender 3D that allows you to import 3D models
+**dn-model-import** is a plugin for Blender 3D that allows you to import/export 3D models
 and animations from Dragon Nest game into the editor.
 It works with formats such as: skin data (`.skn`), models (`.msh`) and animations (`.ani`, `.anim`).
-The plugin cannot export loaded models.
 
 ## How to import DN model
 To import a model, just choose the `.skn` file from the import menu. Make sure the `.msh` file is located in the same directory. You can also import `.msh` directly without materials.
@@ -16,8 +15,8 @@ To import a model, just choose the `.skn` file from the import menu. Make sure t
 After successful import, animations will be available in the Action Editor.
 
 ## TODO:
-* Export support
-* Vertex color import support
+* Documentation
+* Vertex color support
 
 ## Requirements
 * Blender (2.80 and above)
