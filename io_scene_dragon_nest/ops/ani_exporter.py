@@ -20,14 +20,14 @@ def convert_matrix(matrix, matrix_rest, matrix_parent):
     return unoriented_matrix(loc_mat)
 
 
-def convert_location(location, matrix_rest, matrix_parent):
+def convert_location(location, matrix_rest, matrix_parent, matrix_root):
     mat = translation_matrix(location)
-    return convert_matrix(mat, matrix_rest, matrix_parent).to_translation()
+    return (matrix_root @ convert_matrix(mat, matrix_rest, matrix_parent)).to_translation()
 
 
-def convert_rotation(rotation, matrix_rest, matrix_parent):
+def convert_rotation(rotation, matrix_rest, matrix_parent, matrix_root):
     mat = rotation_matrix(rotation)
-    return convert_matrix(mat, matrix_rest, matrix_parent).to_quaternion()
+    return (matrix_root @ convert_matrix(mat, matrix_rest, matrix_parent)).to_quaternion()
 
 
 def convert_scale(scale, matrix_rest, matrix_parent):
@@ -124,9 +124,13 @@ class AniExporter:
     def export_data(self, context, options):
         arm_obj, version = options["armature_object"], options["version"]
         actions = options["actions"]
+        apply_root_transform = options["apply_root_transform"]
 
         self.ani.file_type = "Eternity Engine Ani File 0.1"
         self.ani.version = version
+
+        matrix_arm = unoriented_matrix(arm_obj.matrix_world) if apply_root_transform else Matrix.Identity(4)
+        scale_arm = matrix_arm.to_scale()
 
         matrices = get_armature_matrices(arm_obj)
 
@@ -164,6 +168,7 @@ class AniExporter:
 
             ani_animations = []
             matrix_base = unoriented_matrix(bone_bases[bone_name].to_matrix())
+            matrix_root = scale_matrix(scale_arm) if bone.parent else matrix_arm
 
             for ad in action_data_list:
                 bd = ad.bones_data.get(bone_name)
@@ -173,38 +178,39 @@ class AniExporter:
                 # location
                 frames = sorted(bd.locations) if bd else None
                 if frames:
-                    loc = convert_location(bd.locations[frames[0]], matrix_rest, matrix_parent)
+                    loc = convert_location(bd.locations[frames[0]], matrix_rest, matrix_parent, matrix_root)
                     base_location = common.Vector3D(*loc)
 
                     if len(frames) > 1:
                         for f in frames:
-                            loc = convert_location(bd.locations[f], matrix_rest, matrix_parent)
+                            loc = convert_location(bd.locations[f], matrix_rest, matrix_parent, matrix_root)
                             locations.append(KeyFrame(f, common.Vector3D(*loc)))
 
                         if frames[-1] != ad.frames_num - 1:
                             f = frames[-1]
-                            loc = convert_location(bd.locations[f], matrix_rest, matrix_parent)
+                            loc = convert_location(bd.locations[f], matrix_rest, matrix_parent, matrix_root)
                             locations.append(KeyFrame(f, common.Vector3D(*loc)))
                 else:
-                    base_location = common.Vector3D(*matrix_base.to_translation())
+                    loc = (matrix_root @ matrix_base).to_translation()
+                    base_location = common.Vector3D(*loc)
 
                 # rotation
                 frames = sorted(bd.rotations_quat) if bd else None
                 if frames:
-                    rot = convert_rotation(bd.rotations_quat[frames[0]], matrix_rest, matrix_parent)
+                    rot = convert_rotation(bd.rotations_quat[frames[0]], matrix_rest, matrix_parent, matrix_root)
                     base_rotation = common.Vector4D(rot.x, rot.y, rot.z, rot.w)
 
                     if len(frames) > 1:
                         for f in frames:
-                            rot = convert_rotation(bd.rotations_quat[f], matrix_rest, matrix_parent)
+                            rot = convert_rotation(bd.rotations_quat[f], matrix_rest, matrix_parent, matrix_root)
                             rotations.append(KeyFrame(f, common.Vector4D(rot.x, rot.y, rot.z, rot.w)))
 
                         if frames[-1] != ad.frames_num - 1:
                             f = frames[-1]
-                            rot = convert_rotation(bd.rotations_quat[f], matrix_rest, matrix_parent)
+                            rot = convert_rotation(bd.rotations_quat[f], matrix_rest, matrix_parent, matrix_root)
                             rotations.append(KeyFrame(f, common.Vector4D(rot.x, rot.y, rot.z, rot.w)))
                 else:
-                    rot = matrix_base.to_quaternion()
+                    rot = (matrix_root @ matrix_base).to_quaternion()
                     base_rotation = common.Vector4D(rot.x, rot.y, rot.z, rot.w)
 
                 # scale
@@ -223,7 +229,8 @@ class AniExporter:
                             scl = convert_scale(bd.scales[f], matrix_rest, matrix_parent)
                             scales.append(KeyFrame(f, common.Vector3D(*scl)))
                 else:
-                    base_scale = common.Vector3D(*matrix_base.to_scale())
+                    scl = matrix_base.to_scale()
+                    base_scale = common.Vector3D(*scl)
 
                 ani_animations.append(Animation(
                     base_location,
@@ -253,6 +260,7 @@ def save(context, filepath, options):
         "version": options["ani_version"],
         "armature_object": arm_obj,
         "actions": actions,
+        "apply_root_transform": options["apply_root_transform"],
     }
 
     ani_exporter = AniExporter()

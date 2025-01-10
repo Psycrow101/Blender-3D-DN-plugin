@@ -119,7 +119,7 @@ class SknImporter:
         self.msh_importer = None
 
 
-def load(context, filepath, *, append_to_target, global_matrix=None):
+def load(context, filepath, *, global_scale=1.0, append_to_target=False):
     append_armature = None
     if append_to_target:
         append_armature = context.view_layer.objects.active
@@ -146,6 +146,7 @@ def load(context, filepath, *, append_to_target, global_matrix=None):
         return skn_importer
 
     msh_options = {
+        "global_scale": global_scale,
         "append_armature": append_armature,
     }
 

@@ -15,7 +15,8 @@ class MshImporter:
         view_layer = context.view_layer
         collection = view_layer.active_layer_collection.collection
 
-        append_armature = options.get("append_armature")
+        global_scale = options.get("global_scale", 1.0)
+        append_armature = options.get("append_armature", False)
 
         if append_armature:
             arm_obj = append_armature
@@ -51,6 +52,7 @@ class MshImporter:
             arm_obj.dragon_nest.bbox_min = (self.msh.bb_min.x, self.msh.bb_min.z, self.msh.bb_min.y)
             arm_obj.dragon_nest.bbox_max = (self.msh.bb_max.x, self.msh.bb_max.z, self.msh.bb_max.y)
             arm_obj.show_in_front = True
+            arm_obj.scale = (global_scale, ) * 3
 
             collection.objects.link(arm_obj)
             view_layer.objects.active = arm_obj
@@ -233,7 +235,7 @@ class MshImporter:
         self.imported = False
 
 
-def load(context, filepath, *, append_to_target, global_matrix=None):
+def load(context, filepath, *, global_scale=1.0, append_to_target=False):
     append_armature = None
     if append_to_target:
         append_armature = context.view_layer.objects.active
@@ -241,6 +243,7 @@ def load(context, filepath, *, append_to_target, global_matrix=None):
             append_armature = None
 
     msh_options = {
+        "global_scale": global_scale,
         "append_armature": append_armature,
     }
 

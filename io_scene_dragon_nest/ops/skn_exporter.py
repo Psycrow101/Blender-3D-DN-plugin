@@ -111,6 +111,7 @@ def save(context, filepath, options):
     msh_options = {
         "version": options["msh_version"],
         "armature_object": arm_obj,
+        "apply_root_transform": options["apply_root_transform"],
     }
 
     msh_exporter = MshExporter()

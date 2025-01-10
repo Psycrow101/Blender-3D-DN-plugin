@@ -89,6 +89,7 @@ class DN_ObjectProps(bpy.types.PropertyGroup):
                 obj.parent_type = 'BONE'
                 obj.matrix_parent_inverse = scale_matrix @ Matrix.Translation((0, -bone.length, 0))
             else:
+                obj.parent_bone = ""
                 obj.parent_type = 'OBJECT'
                 obj.matrix_parent_inverse = Matrix.Identity(4)
 

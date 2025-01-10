@@ -1,6 +1,7 @@
 import bpy
 from bpy.props import (
         BoolProperty,
+        FloatProperty,
         IntProperty,
         StringProperty,
         EnumProperty,
@@ -62,10 +63,18 @@ class DN_Import(bpy.types.Operator, ImportHelper):
     filename_ext = ".skn"
     filter_glob: StringProperty(default="*.skn;*.msh;*.ani;*.anim", options={'HIDDEN'})
 
+    global_scale: FloatProperty(
+        name = "Scale",
+        description = "Root armature scale",
+        min = 0.001,
+        max = 1000.0,
+        default = 1.0
+    )
+
     append_to_target: BoolProperty(
-        name="Append to Target Armature",
-        description="Attach the imported mesh to the selected armature",
-        default=False,
+        name = "Append to Target Armature",
+        description = "Attach the imported mesh to the selected armature",
+        default = False,
     )
 
     def execute(self, context):
@@ -123,12 +132,19 @@ class DN_ExportSKN(bpy.types.Operator, ExportHelper):
         description = "File name used for exporting the MSH file. Leave blank if MSH name is same as SKN name"
     )
 
+    apply_root_transform: BoolProperty(
+        name = "Apply Root Transform",
+        description = "Apply root armature transformation",
+        default = True,
+    )
+
     def execute(self, context):
         filepath = self.filepath
         options = {
             "skn_version": int(self.skn_version),
             "msh_version": int(self.msh_version),
             "msh_name": self.msh_name,
+            "apply_root_transform": self.apply_root_transform,
         }
 
         from ..ops import skn_exporter
@@ -153,10 +169,17 @@ class DN_ExportMSH(bpy.types.Operator, ExportHelper):
         )
     )
 
+    apply_root_transform: BoolProperty(
+        name = "Apply Root Transform",
+        description = "Apply root armature transformation",
+        default = True,
+    )
+
     def execute(self, context):
         filepath = self.filepath
         options = {
             "msh_version": int(self.msh_version),
+            "apply_root_transform": self.apply_root_transform,
         }
 
         from ..ops import msh_exporter
@@ -183,10 +206,17 @@ class DN_ExportANI(bpy.types.Operator, ExportHelper):
         default = '11'
     )
 
+    apply_root_transform: BoolProperty(
+        name = "Apply Root Transform",
+        description = "Apply root armature transformation",
+        default = True,
+    )
+
     def draw(self, context):
         layout = self.layout
 
         layout.prop(self, "ani_version", text="Version")
+        layout.prop(self, "apply_root_transform")
 
         box = layout.box()
         box.label(text="Actions")
@@ -198,6 +228,7 @@ class DN_ExportANI(bpy.types.Operator, ExportHelper):
         filepath = self.filepath
         options = {
             "ani_version": int(self.ani_version),
+            "apply_root_transform": self.apply_root_transform,
         }
 
         from ..ops import ani_exporter

@@ -2,8 +2,9 @@ import bmesh
 import bpy
 
 from math import degrees
+from mathutils import Matrix
 
-from .common import unoriented_matrix, scale_matrix, get_active_armature_object
+from .common import unoriented_matrix, translation_matrix, scale_matrix, get_active_armature_object
 from ..gui import gui
 from ..types import common
 from ..types.msh import MSH, Bone, Collision, Dummy, Mesh, CollisionType
@@ -45,9 +46,21 @@ class MshExporter:
         bm.free()
 
     @staticmethod
-    def export_dummy(context, obj, version) -> Dummy:
+    def export_dummy(context, obj, version, apply_root_transform) -> Dummy:
         parent_name = obj.dragon_nest.parent_name
-        matrix = unoriented_matrix(obj.matrix_basis)
+
+        if apply_root_transform:
+            arm_obj = obj.parent
+            parent_bone = arm_obj.data.bones.get(obj.parent_bone)
+            if parent_bone:
+                matrix_world = (arm_obj.matrix_world @ parent_bone.matrix_local).normalized() @ scale_matrix(parent_bone.dragon_nest.scale)
+                matrix_world = matrix_world.inverted_safe() @ obj.matrix_world
+            else:
+                matrix_world = obj.matrix_world
+        else:
+            matrix_world = obj.matrix_basis
+
+        matrix = unoriented_matrix(matrix_world)
 
         if version > 12:
             matrix.transpose()
@@ -68,12 +81,13 @@ class MshExporter:
         return Dummy(obj.name, parent_name, transformation)
 
     @staticmethod
-    def export_collision(context, obj) -> Collision:
+    def export_collision(context, obj, apply_root_transform) -> Collision:
         collision = Collision()
         collision.name = obj.name
         collision.type = int(obj.dragon_nest.collision.type)
 
-        matrix = unoriented_matrix(obj.matrix_local)
+        matrix_world = obj.matrix_world if apply_root_transform else obj.matrix_local
+        matrix = unoriented_matrix(matrix_world)
 
         if collision.type == CollisionType.BOX:
             rotation_matrix = matrix.normalized().to_3x3().transposed()
@@ -106,7 +120,7 @@ class MshExporter:
             if obj.type == "MESH":
                 mesh = MshExporter.convert_to_mesh(context, obj)
                 MshExporter.triangulate_mesh(mesh)
-                mesh.transform(obj.matrix_local)
+                mesh.transform(matrix_world)
 
                 for polygon in mesh.polygons:
                     co1 = mesh.vertices[polygon.vertices[0]].co
@@ -124,7 +138,7 @@ class MshExporter:
         return collision
 
     @staticmethod
-    def export_mesh(context, obj, arm_obj) -> Mesh:
+    def export_mesh(context, obj, arm_obj, apply_root_transform) -> Mesh:
         msh_mesh = Mesh()
         msh_mesh.name = obj.name
         msh_mesh.parent_name = obj.dragon_nest.parent_name
@@ -135,6 +149,9 @@ class MshExporter:
 
         mesh = MshExporter.convert_to_mesh(context, obj)
         MshExporter.triangulate_mesh(mesh)
+
+        matrix_world = obj.matrix_world if apply_root_transform else obj.matrix_local
+        mesh.transform(matrix_world)
 
         # Check for vertices once before exporting to report instanstly
         if len(mesh.vertices) > 0xFFFF:
@@ -216,17 +233,20 @@ class MshExporter:
     def export_data(self, context, options):
         arm_obj, version = options["armature_object"], options["version"]
 
+        apply_root_transform = options["apply_root_transform"]
+        root_matrix = arm_obj.matrix_world if apply_root_transform else Matrix.Identity(4)
+
         self.msh.file_type = "Eternity Engine Mesh File 0.%d" % version
         self.msh.version = version
 
-        bbox_min = arm_obj.dragon_nest.bbox_min
-        bbox_max = arm_obj.dragon_nest.bbox_max
+        bbox_min = (root_matrix @ translation_matrix(arm_obj.dragon_nest.bbox_min)).to_translation()
+        bbox_max = (root_matrix @ translation_matrix(arm_obj.dragon_nest.bbox_max)).to_translation()
 
         self.msh.bb_min = common.Vector3D(bbox_min[0], bbox_min[2], bbox_min[1])
         self.msh.bb_max = common.Vector3D(bbox_max[0], bbox_max[2], bbox_max[1])
 
         for bone in arm_obj.data.bones:
-            matrix = bone.matrix_local @ scale_matrix(bone.dragon_nest.scale)
+            matrix = (root_matrix @ bone.matrix_local).normalized() @ scale_matrix(bone.dragon_nest.scale)
             matrix = unoriented_matrix(matrix).inverted_safe().transposed()
             bone_matrix = common.Matrix4x4(
                 common.Vector4D(*matrix[0]),
@@ -243,18 +263,18 @@ class MshExporter:
 
                 # mesh
                 if obj.type == 'MESH':
-                    mesh = MshExporter.export_mesh(context, obj, arm_obj)
+                    mesh = MshExporter.export_mesh(context, obj, arm_obj, apply_root_transform)
                     self.msh.meshes.append(mesh)
                     self.mesh_objects.append(obj)
 
                 # dummy
                 elif obj.type == 'EMPTY':
-                    dummy = MshExporter.export_dummy(context, obj, version)
+                    dummy = MshExporter.export_dummy(context, obj, version, apply_root_transform)
                     self.msh.dummies.append(dummy)
 
             # collision
             elif obj.dragon_nest.type == 'COL':
-                collision = MshExporter.export_collision(context, obj)
+                collision = MshExporter.export_collision(context, obj, apply_root_transform)
                 self.msh.collisions.append(collision)
 
     def __init__(self):
@@ -271,6 +291,7 @@ def save(context, filepath, options):
     msh_options = {
         "version": options["msh_version"],
         "armature_object": arm_obj,
+        "apply_root_transform": options["apply_root_transform"],
     }
 
     msh_exporter = MshExporter()
