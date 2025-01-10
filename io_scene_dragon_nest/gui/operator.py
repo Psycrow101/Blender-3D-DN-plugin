@@ -117,14 +117,19 @@ class DN_ExportSKN(bpy.types.Operator, ExportHelper):
         name = "Skin Version",
         items = (
             ('10', '10', ''),
-        )
+        ),
+        default = '10'
     )
 
     msh_version: EnumProperty(
         name = "Mesh Version",
         items = (
+            ('10', '10', ''),
+            ('11', '11', ''),
+            ('12', '12', ''),
             ('13', '13', ''),
-        )
+        ),
+        default = '13'
     )
 
     msh_name: StringProperty(
@@ -165,8 +170,12 @@ class DN_ExportMSH(bpy.types.Operator, ExportHelper):
     msh_version: EnumProperty(
         name = "Mesh Version",
         items = (
+            ('10', '10', ''),
+            ('11', '11', ''),
+            ('12', '12', ''),
             ('13', '13', ''),
-        )
+        ),
+        default = '13'
     )
 
     apply_root_transform: BoolProperty(
