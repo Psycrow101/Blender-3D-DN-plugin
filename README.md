@@ -14,8 +14,11 @@ To import a model, just choose the `.skn` file from the import menu. Make sure t
 
 After successful import, animations will be available in the Action Editor.
 
+## Documentation
+
+[See wiki](https://github.com/Psycrow101/Blender-3D-DN-plugin/wiki)
+
 ## TODO:
-* Documentation
 * Vertex color support
 
 ## Requirements
