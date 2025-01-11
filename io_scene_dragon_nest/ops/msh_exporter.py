@@ -1,7 +1,6 @@
 import bmesh
 import bpy
 
-from math import degrees
 from mathutils import Matrix
 
 from .common import unoriented_matrix, translation_matrix, scale_matrix, get_active_armature_object
@@ -107,12 +106,16 @@ class MshExporter:
             collision.primitive = PrimitiveSphere(location, radius)
 
         elif collision.type == CollisionType.CAPSULE:
-            euler = matrix.to_euler()
+            scale = matrix.to_scale()
+            radius = max(scale.x, scale.z)
+            height = (scale.y - radius) * 2
 
-            location = common.Vector3D(*matrix.to_translation())
-            rotation = common.Vector3D(degrees(euler.x), degrees(euler.y), degrees(euler.z))
-            radius = max(matrix.to_scale())
-            collision.primitive = PrimitiveCapsule(location, rotation, radius)
+            direction = matrix.col[1].to_3d().normalized() * height
+            location = matrix.to_translation() - direction * 0.5
+
+            location = common.Vector3D(*location)
+            direction = common.Vector3D(*direction)
+            collision.primitive = PrimitiveCapsule(location, direction, radius)
 
         elif collision.type == CollisionType.TRIANGLE_LIST:
             triangles = []

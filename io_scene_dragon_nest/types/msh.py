@@ -235,7 +235,7 @@ class PrimitiveSphere:
 @dataclass
 class PrimitiveCapsule:
     location: Vector3D
-    rotation: Vector3D
+    direction: Vector3D
     radius: float
 
     @classmethod
@@ -248,7 +248,7 @@ class PrimitiveCapsule:
 
     def write(self, writer: Writer):
         self.location.write(writer)
-        self.rotation.write(writer)
+        self.direction.write(writer)
         writer.write_float(self.radius)
 
 

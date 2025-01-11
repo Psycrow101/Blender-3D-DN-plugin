@@ -1,8 +1,7 @@
 import bpy
 import bmesh
 
-from math import radians
-from mathutils import Euler, Matrix
+from mathutils import Matrix, Vector
 
 from .common import oriented_matrix, translation_matrix, rotation_matrix, scale_matrix
 from ..gui import gui
@@ -173,11 +172,15 @@ class MshImporter:
                     col_obj.scale = (primitive.radius,) * 3
 
                 elif msh_collision.type == CollisionType.CAPSULE:
-                    rot = primitive.rotation
+                    direction = Vector(primitive.direction.unpack())
+                    height = direction.length
 
-                    loc_mat = translation_matrix(primitive.location.unpack())
-                    rot_mat = rotation_matrix(Euler((radians(rot.x), radians(rot.y), radians(rot.z))))
-                    scl_mat = scale_matrix((primitive.radius,) * 3)
+                    loc = Vector(primitive.location.unpack()) + direction * 0.5
+                    rot = direction.normalized().to_track_quat('Y', 'Z')
+
+                    loc_mat = translation_matrix(loc)
+                    rot_mat = rotation_matrix(rot)
+                    scl_mat = scale_matrix((primitive.radius, height * 0.5 + primitive.radius, primitive.radius))
 
                     col_obj = bpy.data.objects.new(col_name, None)
                     col_obj.matrix_local = oriented_matrix(loc_mat @ rot_mat @ scl_mat)
