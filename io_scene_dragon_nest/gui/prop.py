@@ -170,9 +170,14 @@ class DN_ObjectProps(bpy.types.PropertyGroup):
                 (matrix_world @ Matrix.Translation((bbox_max[0], bbox_max[1], bbox_max[2]))).to_translation(),
             )
 
-            shader = gpu.shader.from_builtin('UNIFORM_COLOR')
+            if bpy.app.version < (4, 0, 0):
+                shader = gpu.shader.from_builtin('UNIFORM_COLOR')
+            else:
+                shader = gpu.shader.from_builtin('3D_UNIFORM_COLOR')
+
             batch = batch_for_shader(shader, 'LINES', {"pos": coords}, indices=BOX_INDICES)
 
+            shader.bind()
             shader.uniform_float("color", (1, 1, 0, 1))
             batch.draw(shader)
 
